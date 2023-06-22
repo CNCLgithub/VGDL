@@ -1,4 +1,9 @@
 module ButterflyGame
+
+# Write your package code here.
+
+end
+module ButterflyGame
 using Setfield
 using NearestNeighbors
 
