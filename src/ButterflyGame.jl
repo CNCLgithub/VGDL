@@ -1,10 +1,5 @@
 module ButterflyGame
-
-# Write your package code here.
-
-end
-module ButterflyGame
-using Setfield
+using Accessors
 using NearestNeighbors
 
 # define the main interface
@@ -13,9 +8,22 @@ abstract type Element end
 abstract type StaticElement <: Element end
 abstract type DynamicElement <: Element end
 abstract type Agent <: DynamicElement end
+"""
+    position (::DynamicElement)::CartesianIndex{2}
+
+position of an element
+"""
+function position end
+"""
+    policy (::Agent)::Policy
+
+policy of an agent
+"""
+function policy end
 abstract type Action end
 abstract type Scene end
 abstract type Policy end
+
 
 
 mutable struct GridScene <: Scene 
@@ -47,11 +55,15 @@ mutable struct Butterfly <: Agent
         new(position, 0, RandomPolicy())
     end
 end
+position(agent::Butterfly) = agent.position
+policy(agent::Butterfly) = agent.policy
 
 mutable struct Player <: Agent
     position::CartesianIndex{2}
     policy::Policy
 end
+position(agent::Player) = agent.position
+policy(agent::Player) = agent.policy
 
 
 struct Left <: Action end
@@ -109,18 +121,12 @@ function move(state::GameState, agent::Player, action::Up)
     Player(new_position)
 end
 
-function move(state::GameState, agent::Player, action::Down)
-    y, x = agent.position[1], agent.position[2]
-    try @set! agent.position[1] = y+1
-    catch BoundsError
-        return Player(agent.position)
-    end
-    if state.scene.items[y+1][x] != 0
-        return Player(agent.position)
-    else
-        new_position = CartesianIndex(y+1, x)
-    end
-    Player(new_position)
+function move(state::GameState, agent::Agent, action::Down) #UPDATED
+    pos = y, x = position(agent)
+    y == state.scene.bounds[2] && return pos
+    new_position = CartesianIndex(y+1, x)
+    return new_position
+    #@set agent.position = new_position
 end
 
 function move(state::GameState, agent::Player, action::Left)
@@ -153,8 +159,13 @@ end
 
 
 function resolve!(state::GameState, agent::Player, action::Action)
-    agent = move(state, agent, action)
-    # if there's no new position, nothing happens
+    new_position = move(state, agent, action)
+    # check if new_position collides w obstacle
+
+end
+module ButterflyGame
+
+
 end
 
 function resolve!(state::GameState, agent::Butterfly, action::Action)
