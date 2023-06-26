@@ -1,4 +1,6 @@
 module ButterflyGame
+using Setfield
+using NearestNeighbors
 
 # define the main interface
 abstract type Observation end
@@ -13,7 +15,7 @@ abstract type Policy end
 
 mutable struct GridScene <: Scene 
     bounds::Tuple{Int, Int}
-    items::Matrix{StaticElement} #TODO
+    items::Matrix{StaticElement} #TODO: obstacles & pinecones
 end
 
 mutable struct GameState
@@ -46,6 +48,7 @@ mutable struct Player <: Agent
     policy::Policy
 end
 
+
 struct Left <: Action end
 struct Right <: Action end
 struct Up <: Action end
@@ -62,9 +65,9 @@ end
 # evolves the world, generating a new state from an agent's action (possibly no action)
 function step(state::GameState)::GameState
     # aggregate actions
-    lagents = length(state.agents)
-    actions = Vector{Action}(undef, lagents)
-    for i = 1:lagents
+    l_agents = length(state.agents)
+    actions = Vector{Action}(undef, l_agents)
+    for i = 1:l_agents
         agent = state.agents[i]
         obs = observe(agent, state)
         actions[i] = plan(agent, obs)
@@ -72,7 +75,7 @@ function step(state::GameState)::GameState
     # resolve actions
     # player first
     newstate = deepcopy(state) #REVIEW: inefficient
-    for i = 1:lagents
+    for i = 1:l_agents
         agent = state.agents[i]
         obs = observe(agent, state)
         actions[i] = plan(agent, obs)
@@ -84,39 +87,114 @@ function resolve!(::GameState, ::Agent, ::NoAction)
 end
 
 function move(state::GameState, agent::Player, action::Up)
+    # CartesianIndex
+    y, x = agent.position[1], agent.position[2]
     # check if up is out of bounds
+    try @set! agent.position[1] = y-1
+    catch BoundsError
+        return Player(agent.position)
+    end
     # check if up is blocked
+    if state.scene.items[y-1][x] != 0
+        return Player(agent.position)
+    else
+        new_position = CartesianIndex(y-1, x)
+    end
     # return agent with new position if both false
-    Player(newposition)
+    Player(new_position)
 end
 
 function move(state::GameState, agent::Player, action::Down)
-    
+    y, x = agent.position[1], agent.position[2]
+    try @set! agent.position[1] = y+1
+    catch BoundsError
+        return Player(agent.position)
+    end
+    if state.scene.items[y+1][x] != 0
+        return Player(agent.position)
+    else
+        new_position = CartesianIndex(y+1, x)
+    end
+    Player(new_position)
 end
 
 function move(state::GameState, agent::Player, action::Left)
-    
+    y, x = agent.position[1], agent.position[2]
+    try @set! agent.position[2] = x-1
+    catch BoundsError
+        return Player(agent.position)
+    end
+    if state.scene.items[y][x-1] != 0
+        return Player(agent.position)
+    else
+        new_position = CartesianIndex(y, x-1)
+    end
+    Player(new_position)
 end
 
 function move(state::GameState, agent::Player, action::Right)
-    
+    y, x = agent.position[1], agent.position[2]
+    try @set! agent.position[2] = x+1
+    catch BoundsError
+        return Player(agent.position)
+    end
+    if state.scene.items[y][x+1] != 0
+        return Player(agent.position)
+    else
+        new_position = CartesianIndex(y, x+1)
+    end
+    Player(new_position)
 end
+
 
 function resolve!(state::GameState, agent::Player, action::Action)
     agent = move(state, agent, action)
-    # if there's no new position, 
-    # check if player can interact in new location - pine cone?
-
+    # if there's no new position, nothing happens
 end
 
+function resolve!(state::GameState, agent::Butterfly, action::Action)
+    # TODO: butterfly gets eaten, score increases
+end
+
+
 struct NoObservation <: Observation end
+
 function observe(::Butterfly, ::GameState)
     return NoObservation()
 end
-function observe(agent::Player, state::GameState) 
-    #TODO
+
+function observe(agent::Player, state::GameState)::Observation
+    # get all butterfly locations
+    l_agents = length(state.agents)
+    V = SVector{2, Int32}
+    positions = Vector{V}(undef, l_agents-1)
+    for i = 2:l_agents 
+        agent = state.agents[i]
+        y, x = agent.position[1], agent.position[2]
+        positions[i-1] = [x, y]
+    end
+    # nearest neighbot search
+    kdtree = KDTree(positions)
+    y, x = agent.position[1], agent.position[2]
+    nn(kdtree, [x, y]) = index, dist
+    # returns the location of the nearest butterfly
+    return positions[index]
 end
 
+function plan(state::GameState, agent::Player, obs::Observation, policy=policy(agent))
+    y, x = agent.position[1], agent.position[2]
+    bx, by = obs[1], obs[2]
+    # moves toward the nearest butterfly
+    if y > by
+        move(state, agent, Up())
+    else if y < by
+        move(state, agent, Down())
+    else if x > bx 
+        move(state, agent, Right())
+    else if x < bx
+        move(state, agent, Left())
+    end
+end
 
 # generate an observation for the agent (for now, this can be a simple pixel render but we can flush this out with rendering modules)
 observe(state::GameState, agent::Agent)::Observation
@@ -127,7 +205,6 @@ plan(agent::Agent, obs::Observation, policy=policy(agent))::Action
 # here is an "dummy" example, that just picks a random action
 struct RandomPolicy <: Policy end
 plan(agent::Agent, obs::Observation, policy::RandomPolicy) = rand(actionspace(agent))
-
 
 
 end
