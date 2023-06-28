@@ -103,65 +103,41 @@ function resolve!(::GameState, ::Agent, ::NoAction)
     return nothing
 end
 
-function move(state::GameState, agent::Player, action::Up)
-    # CartesianIndex
-    y, x = agent.position[1], agent.position[2]
-    # check if up is out of bounds
-    try @set! agent.position[1] = y-1
-    catch BoundsError
-        return Player(agent.position)
-    end
-    # check if up is blocked
-    if state.scene.items[y-1][x] != 0
-        return Player(agent.position)
-    else
-        new_position = CartesianIndex(y-1, x)
-    end
-    # return agent with new position if both false
-    Player(new_position)
+function move(state::GameState, agent::Agent, action::Up)
+    pos = y, x = position(agent)
+    y == 1 && return pos
+    new_position = CartesianIndex(y-1, x)
+    return new_position
 end
 
-function move(state::GameState, agent::Agent, action::Down) #UPDATED
+function move(state::GameState, agent::Agent, action::Down)
     pos = y, x = position(agent)
     y == state.scene.bounds[2] && return pos
     new_position = CartesianIndex(y+1, x)
     return new_position
-    #@set agent.position = new_position
 end
 
 function move(state::GameState, agent::Player, action::Left)
-    y, x = agent.position[1], agent.position[2]
-    try @set! agent.position[2] = x-1
-    catch BoundsError
-        return Player(agent.position)
-    end
-    if state.scene.items[y][x-1] != 0
-        return Player(agent.position)
-    else
-        new_position = CartesianIndex(y, x-1)
-    end
-    Player(new_position)
+    pos = y, x = position(agent)
+    x == 1 && return pos
+    new_position = CartesianIndex(y, x-1)
+    return new_position
 end
 
 function move(state::GameState, agent::Player, action::Right)
-    y, x = agent.position[1], agent.position[2]
-    try @set! agent.position[2] = x+1
-    catch BoundsError
-        return Player(agent.position)
-    end
-    if state.scene.items[y][x+1] != 0
-        return Player(agent.position)
-    else
-        new_position = CartesianIndex(y, x+1)
-    end
-    Player(new_position)
+    pos = y, x = position(agent)
+    x == state.scene.bounds[1] && return pos
+    new_position = CartesianIndex(y, x+1)
+    return new_position
 end
 
 
 function resolve!(state::GameState, agent::Player, action::Action)
     new_position = move(state, agent, action)
     # check if new_position collides w obstacle
-
+    state.scene.item[new_position] = obstacle && return agent
+    @set agent.position = new_position
+    end
 end
 module ButterflyGame
 
