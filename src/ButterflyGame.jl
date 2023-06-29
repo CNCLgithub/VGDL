@@ -139,10 +139,6 @@ function resolve!(state::GameState, agent::Player, action::Action)
     @set agent.position = new_position
     end
 end
-module ButterflyGame
-
-
-end
 
 function resolve!(state::GameState, agent::Butterfly, action::Action)
     # TODO: butterfly gets eaten, score increases

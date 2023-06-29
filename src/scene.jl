@@ -6,14 +6,14 @@ function random_scene(bounds::Tuple, density::Float64, npinecones::Int)
     m = fill(floor, bounds)
     # obstacles first
     @inbounds for i = eachindex(m)
-        rand() < density && m[i] = obstacle
+        rand() < density && (m[i] = obstacle)
     end
     # pinecones can potentially overwrite obstacles
     pine_map = shuffle!(Vector(keys(m)))
     for i = 1:npinecones
         m[pine_map[i]] = pinecone
     end
-    state.scene.items = m
+    return m
 end
 
 function render_image(state::GameState)
