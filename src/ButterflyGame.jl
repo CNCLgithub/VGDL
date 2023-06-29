@@ -2,6 +2,8 @@ module ButterflyGame
 using Accessors
 using NearestNeighbors
 
+export GameState
+
 # define the main interface
 abstract type Observation end
 abstract type Element end
@@ -28,13 +30,17 @@ abstract type Policy end
 
 mutable struct GridScene <: Scene 
     bounds::Tuple{Int, Int}
-    items::Matrix{StaticElement} #TODO: obstacles & pinecones
+    items::Matrix{StaticElement}
 end
+
+GridScene(bounds) = GridScene(bounds, fill(floor, bounds))
 
 mutable struct GameState
     scene::GridScene
     agents::Vector{Agent}
     reward::Float64
+
+    GameState(scene) = new(scene, Agent[], 0)
 end
 
 struct Obstacle <: StaticElement end
@@ -45,6 +51,7 @@ const pinecone = Pinecone()
 
 struct Floor <: StaticElement end
 const floor = Floor()
+
 
 mutable struct Butterfly <: Agent
     position::CartesianIndex{2}
@@ -58,6 +65,7 @@ end
 position(agent::Butterfly) = agent.position
 policy(agent::Butterfly) = agent.policy
 
+#= 
 mutable struct Player <: Agent
     position::CartesianIndex{2}
     policy::Policy
@@ -140,9 +148,10 @@ function resolve!(state::GameState, agent::Player, action::Action)
     end
 end
 
-function resolve!(state::GameState, agent::Butterfly, action::Action)
+#= function resolve!(state::GameState, agent::Butterfly, action::Action)
     # TODO: butterfly gets eaten, score increases
-end
+    return nothing
+end =#
 
 
 struct NoObservation <: Observation end
@@ -193,6 +202,6 @@ plan(agent::Agent, obs::Observation, policy=policy(agent))::Action
 # here is an "dummy" example, that just picks a random action
 struct RandomPolicy <: Policy end
 plan(agent::Agent, obs::Observation, policy::RandomPolicy) = rand(actionspace(agent))
-
-
+ =#
+include("scene.jl")
 end

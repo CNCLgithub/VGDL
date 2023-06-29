@@ -1,10 +1,11 @@
 using Test
 using ButterflyGame
 
-include("../src/scene.jl")
-
-@testset "random scene" begin
-    state::GameState
-    state.scene = random_scene(Tuple([10, 10])), 0.3, 20)
+function mytest()
+    scene = ButterflyGame.GridScene((30, 30))
+    scene = random_scene((30, 30), 0.25, 40)
+    state = ButterflyGame.GameState(scene)
     render_image(state)
 end
+
+mytest()
