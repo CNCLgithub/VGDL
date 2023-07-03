@@ -25,7 +25,6 @@ function random_scene(bounds::Tuple, density::Float64, npinecones::Int)
     len = length(m)
     last = len - col
     @inbounds for i = eachindex(m)
-        # borders
         remcol = i % col
         remcol == 0 && (m[i] = obstacle)
         remcol == 1 && (m[i] = obstacle)
@@ -35,6 +34,8 @@ function random_scene(bounds::Tuple, density::Float64, npinecones::Int)
     return GridScene(bounds, m)
 end
 
+function spawn_butterfly()
+end
 
 """
     color(::Element)::RGB
@@ -52,10 +53,13 @@ color(::Obstacle) = black_color
 const green_color = RGB{Float32}(0, 1, 0)
 color(::Pinecone) = green_color
 
+const pink_color = colorant"rgb(244, 200, 197)"
+color(::Butterfly) = pink_color
 
-function render_image(state::GameState)
-    bounds = state.scene.bounds
-    items = state.scene.items
+
+function render_image(scene::GridScene)
+    bounds = scene.bounds
+    items = scene.items
     img = fill(color(floor), bounds)
     
     # obstacles: black; pinecones: green
@@ -63,6 +67,7 @@ function render_image(state::GameState)
     img[findall(x -> x == pinecone, items)] .= color(pinecone)
     
     # save & open image
+    #img = imresize(img, ratio=25)
     output_path = "downloads/output_img.png"
     save(output_path, img)
     run(`open $output_path`)
