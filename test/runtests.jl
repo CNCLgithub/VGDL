@@ -7,18 +7,24 @@ function initial()
     render_image(scene)
 end
 
-function testlevel()
+function test_level()
     scene = ButterflyGame.GridScene((11, 28))
     m = scene.items
-    # render scene
-    o = [(2,4), (2,6), (2,24), (2,26), (4,9), (5,9), (6,10), (4,21), (4,20), (4,19), (7,15), (7,16), (7,17), (7,18), (8,15), (10,4), (10,6), (10,24), (10,26)]
-    p = [(6,2), (2,5), (2,15), (10,5), (10,15), (2,25), (6,27), (10,25)]
+    # render scene (TODO: use symbols & switch to SVector)
+    o = CartesianIndex.([(2,4), (2,6), (2,24), (2,26), (4,9), (5,9), (6,10), (4,21), (4,20), (4,19), (7,15), (7,16), (7,17), (7,18), (8,15), (10,4), (10,6), (10,24), (10,26)])
+    p = CartesianIndex.([(6,2), (2,5), (2,15), (10,5), (10,15), (2,25), (6,27), (10,25)])
+    b = CartesianIndex.([(4,5), (8,6), (5,7), (7,11), (8,17), (7,22), (8,24), (4,13), (5,14), (5,16), (5,20), (4,27)])
+    a = CartesianIndex(9,11)
     @inbounds for i = eachindex(o)
-        m[CartesianIndex(o[i])] = ButterflyGame.obstacle
+        m[o[i]] = ButterflyGame.obstacle
     end
     @inbounds for i = eachindex(p)
-        m[CartesianIndex(p[i])] = ButterflyGame.pinecone
+        m[p[i]] = ButterflyGame.pinecone
     end
+    @inbounds for i = eachindex(b)
+        m[b[i]] = ButterflyGame.butterfly
+    end
+    m[a] = ButterflyGame.player
     # borders
     col = scene.bounds[1]
     row = scene.bounds[2]
@@ -36,5 +42,5 @@ function testlevel()
 end
 
 
-#initial()
-testlevel()
+initial()
+#test_level()
