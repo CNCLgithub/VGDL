@@ -8,6 +8,12 @@ function initial()
 end
 
 function test_level()
+    scene = ButterflyGame.GridScene((10,10))
+    scene = random_scene((30, 30). 0.25, 4)
+    render_image(scene)
+end
+
+function level_zero()
     scene = ButterflyGame.GridScene((11, 28))
     m = scene.items
     # render scene (TODO: use symbols & switch to SVector)
@@ -42,5 +48,6 @@ function test_level()
 end
 
 
-initial()
-#test_level()
+#initial()
+test_level()
+#level_zero()

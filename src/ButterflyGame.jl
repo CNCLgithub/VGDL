@@ -4,12 +4,17 @@ using NearestNeighbors
 using StaticArrays
 using Setfield
 using AccessorsExtra
+using DataStructures 
 
+include("interaction.jl")
 export GameState
 
+
 # define the main interface
-abstract type Game end
-struct ButterflyGame <: Game end
+abstract type Game end 
+abstract type Rule end
+abstract type Action <: Rule end
+abstract type Interaction <: Rule end
 abstract type Observation end
 abstract type Element end
 abstract type StaticElement <: Element end
@@ -27,10 +32,8 @@ function position end
 policy of an agent
 """
 function policy end
-abstract type Action end
 abstract type Scene end
 abstract type Policy end
-
 
 
 mutable struct GridScene <: Scene 
@@ -50,10 +53,8 @@ end
 
 struct Obstacle <: StaticElement end
 const obstacle = Obstacle()
-
 struct Pinecone <: StaticElement end
 const pinecone = Pinecone()
-
 struct Floor <: StaticElement end
 const floor = Floor()
 
@@ -79,7 +80,7 @@ end
 position(agent::Player) = agent.position
 policy(agent::Player) = agent.policy
 
-
+#=
 struct Left <: Action end
 struct Right <: Action end
 struct Up <: Action end
@@ -91,40 +92,70 @@ const all_moves = [Left(), Right(), Up(), Down(), NoAction()]
 function actionspace(agent::Agent)
     return all_moves
 end
-
+=#
 
 function step(state::GameState, imap::InteractionMap)::GameState
     # queue actions
     l_agents = length(state.agents)
-    new_agents = Vector{Agent}(undef, l_agents)
+    queues = [PriorityQueue{Rule, Int64} for _ in 1:l_agents] # TODO: optimize
     for i = 1:l_agents
         agent = state.agents[i]
         obs = observe(agent, state)
-        new_agents[i] = plan(state, agent, obs, policy) # TODO: policy
+        action = plan(agent, obs, policy)
+        sync!(queues[i], action)
     end
-    # detect (and resolve?) interactions (collisions)
-    newscene = deepcopy(state.scene) # REVIEW: inefficient
-    positions = map(position, new_agents)
-    kdtree = KDTree(positions)
+
+    # detect interactions (collisions)
+    kdtree = KDTree(potential_positions)
+    for i = 1:l_agents
+        pot_pos = lookahead(agent, queues[i]) 
+        elem = state.scene[pot_pos] # could be a `Floor` | `Obstacle` | `Pinecone`
+        key = typeof(agent) => typeof(elem)
+        haskey(imap, key) || continue
+        rule = imap[key]
+        sync!(queues[i], rule)
+    end
+
     for i = 1:l_agents
         agent = new_agents[i]
+        pot_pos = lookahead(agent, queues[i]) 
         # Check the agent's position on the gridscene
-        cs = collisions(state, position(agent), kdtree)
-        agent_type = typeof(agent)
+        cs = collisions(state, pot_pos, kdtree)
+        agent_type = typeof(elem)
         # Update
         for collider in cs
             key = agent_type => typeof(collider)
             haskey(imap, key) || continue
-            #rule = get(imap, key, x -> x)
-            #rule = imap[key]
-            new_agents[i] = rule(new_agents[i])
+            sync!(queues[i], imap[key])
         end 
     end
+
+    # resolve the queue
+end
+
+sync!(queue::PriorityQueue, rule::Rule)
+
+function sync!(queue::PriorityQueue, action::Action)
+    action_type = typeof(action)
+    action_type == Move && code = 1
+    action_type == Stepback && code = 0
+    # add Move or Stepback, if both exist then delete everything
+    try 
+        lowest = peek(queue)
+    catch BoundsError
+        enqueue!(queue, action, code)
+    else
+        code == lowest || dequeue!(queue)
+        code == lowest && enqueue!(queue, action, code)
+    end
+end
+
+function sync!(queue::PriorityQueue, collision::Interaction) # TODO
+    
 end
 
 function collisions(state, agent_pos, kdtree)
     # is anything present at this location?
-    elem::Element = state.scene[agent_pos] # could a `Floor` | `Obstacle` | `Pinecone`
     idxs = inrange(kdtree, agent_pos, 1.0) # length > 1
     other_agents = state.agents[idxs]
     collisions = Vector{Element}[state.scene[agent_pos]]
@@ -139,6 +170,7 @@ function resolve!(::GameState, ::Agent, ::NoAction)
     return nothing
 end
 
+# TODO: return lens & function (+1,0)
 function move(state::GameState, agent::Agent, action::Up)
     y, x = position(agent)
     @set agent.position = [y-1, x]
@@ -179,6 +211,10 @@ function resolve!(state::GameState, agent::Butterfly, action::Action)
     return nothing
 end 
 
+=#
+
+observe(state::GameState, agent::Agent)::Observation
+plan(state::GameState, agent::Agent, obs::Observation, policy=policy(agent))::Action
 
 struct NoObservation <: Observation end
 
@@ -204,31 +240,29 @@ function observe(agent::Player, state::GameState)::Observation
     return positions[index]
 end
 
-function plan(state::GameState, agent::Player, obs::Observation, policy=policy(agent))
+function plan(agent::Player, obs::Observation, policy=policy(agent))
     y, x = agent.position[1], agent.position[2]
     bx, by = obs[1], obs[2]
     # moves toward the nearest butterfly
     direction = if y > by
-        Up()
+        Up
     elseif y < by
-        Down()
+        Down
     elseif x > bx
-        Right()
-     else
-        Left()
+        Right
+    else
+        Left
     end
-   new_pos = move(state, agent, direction)
+    return direction
 end
 
-# generate an observation for the agent
-observe(state::GameState, agent::Agent)::Observation
-plan(agent::Agent, obs::Observation, policy=policy(agent))::Action
-
-
+#=
 # we can have different policies for different units in the game
 # here is an "dummy" example, that just picks a random action
 struct RandomPolicy <: Policy end
 plan(agent::Agent, obs::Observation, policy::RandomPolicy) = rand(actionspace(agent))
 =#
+
+
 include("scene.jl")
 end

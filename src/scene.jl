@@ -7,7 +7,6 @@ export random_scene,
 
 
 function random_scene(bounds::Tuple, density::Float64, npinecones::Int)
-    # m = Matrix{StaticElement}(undef, bounds)
     m = Matrix{StaticElement}(fill(floor, bounds)) 
 
     # obstacles first

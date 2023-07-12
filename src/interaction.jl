@@ -1,4 +1,7 @@
 using ButterflyGame
+export InteractionMap,
+        Stepback, Back,
+        Move, Up, Down, Left, Right
 
 #= InteractionSet
         avatar    wall   > stepBack
@@ -11,12 +14,45 @@ using ButterflyGame
         butterfly wall > nothing
         cocoon butterfly > killSprite =#
 
-const IPair = Pair{Element, Element}
-const Interaction = Pair{IPair, Function}
+"""
+    lens(::Rule)
+
+The lens that the rule applies to
+"""
+function lens end
+
+"""
+    transform(::Rule)
+
+The transformation applied at the lens.
+"""
+function transform end
+
+struct Move 
+    dir::SVector{2, Int64}
+end
+lens(::Move) = @optic _.position
+transform(m::Move) = x -> x + m.dir
+const Up = Move([-1,0])
+const Down = Move([1,0])
+const Left = Move([0,-1])
+const Right = Move([0,1])
+
+struct Stepback end
+const Back = Stepback()
+
+function compose end
+function compose(::Move, ::Stepback)
+    NoAction()
+end
+
+
+const IPair = Pair{ButterflyGame.Element, ButterflyGame.Element}
+# const Interaction = Pair{IPair, Function}
 const InteractionSet = Vector{Interaction}
-        
+
 # REVIEW: check if type variables are slow
-function interaction_set(::ButterflyGame)
+function interaction_set(::Game)
     set = Interaction[ 
         (Player => Obstacle) => stepback,
         (Butterfly => Obstacle) => stepback,
@@ -27,9 +63,10 @@ function interaction_set(::ButterflyGame)
     ]
 end
         
-const InteractionMap = Dict{Pair, Function}
+const InteractionMap = Dict{Pair, Interaction}
         
-        
+
+# TODO: compose lenses (batchlens) - move & stepback & values
 function compile_interaction_set(g::Game)
     iset = interaction_set(g)
     # a temporary mapping of type pairs ->
@@ -41,8 +78,7 @@ function compile_interaction_set(g::Game)
     else
         vmap[tpair] = [func]
     end
-    end
-    # actually compose the functions
+    # compose the lenses
     imap = InteractionMap()
     for (tpair, vfunc) in vmap
         imap[tpair] = ∘(vmap[tpair])
@@ -51,18 +87,12 @@ function compile_interaction_set(g::Game)
 end
 
 
-function stepback(agent::Agent, obstacle::Obstacle) #TODO: let the agent step back
-    new_agent = 
-    agent = new_agent
-end
-
-function changescore(state::GameState, butterfly::Butterfly, player::Player)
+#= function changescore(state::GameState, butterfly::Butterfly, player::Player)
     state.reward += 1
 end
 
 function kill(state::GameState, butterfly::Butterfly, player::Player) #TODO: remove agent from agents
     agents = state.agents
-    
 end
 
 function clone(state::GameState, butterfly::Butterfly)
@@ -77,3 +107,4 @@ function kill(pinecone::Pinecone, butterfly::Butterfly)
     m = scene.items
     m[position(butterfly)] = floor
 end
+ =#
