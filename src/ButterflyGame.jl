@@ -6,7 +6,6 @@ using Setfield
 using AccessorsExtra
 using DataStructures 
 
-include("interaction.jl")
 export GameState
 
 
@@ -94,6 +93,8 @@ function actionspace(agent::Agent)
 end
 =#
 
+include("interaction.jl")
+
 function step(state::GameState, imap::InteractionMap)::GameState
     # queue actions
     l_agents = length(state.agents)
@@ -133,12 +134,11 @@ function step(state::GameState, imap::InteractionMap)::GameState
     # resolve the queue
 end
 
-sync!(queue::PriorityQueue, rule::Rule)
 
 function sync!(queue::PriorityQueue, action::Action)
     action_type = typeof(action)
-    action_type == Move && code = 1
-    action_type == Stepback && code = 0
+    action_type == Move && (code = 1)
+    action_type == Stepback && (code = 0)
     # add Move or Stepback, if both exist then delete everything
     try 
         lowest = peek(queue)
@@ -213,8 +213,8 @@ end
 
 =#
 
-observe(state::GameState, agent::Agent)::Observation
-plan(state::GameState, agent::Agent, obs::Observation, policy=policy(agent))::Action
+#observe(state::GameState, agent::Agent)::Observation
+#plan(state::GameState, agent::Agent, obs::Observation, policy=policy(agent))::Action
 
 struct NoObservation <: Observation end
 
@@ -235,7 +235,7 @@ function observe(agent::Player, state::GameState)::Observation
     # nearest neighbor search
     kdtree = KDTree(positions)
     y, x = agent.position[1], agent.position[2]
-    nn(kdtree, [x, y]) = index, dist
+    index, dist = nn(kdtree, [x, y])
     # returns the location of the nearest butterfly
     return positions[index]
 end
@@ -264,5 +264,7 @@ plan(agent::Agent, obs::Observation, policy::RandomPolicy) = rand(actionspace(ag
 =#
 
 
+
 include("scene.jl")
+include("../test/runtests.jl")
 end

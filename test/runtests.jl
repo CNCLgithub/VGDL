@@ -1,5 +1,6 @@
 using Test
-using ButterflyGame
+
+include("../src/scene.jl")
 
 function initial()
     scene = ButterflyGame.GridScene((30, 30))
@@ -9,7 +10,7 @@ end
 
 function test_level()
     scene = ButterflyGame.GridScene((10,10))
-    scene = random_scene((30, 30). 0.25, 4)
+    #scene = random_scene((30, 30). 0.25, 4)
     render_image(scene)
 end
 
