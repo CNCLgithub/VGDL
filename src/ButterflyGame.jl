@@ -6,11 +6,17 @@ using Setfield
 using AccessorsExtra
 using DataStructures 
 
-export GameState
+export Game,
+        GameState, 
+        GridScene,
+        Element,
+        Player, Butterfly,
+        floor, obstacle, pinecone
 
 
 # define the main interface
-abstract type Game end 
+struct Game end
+const game = Game()
 abstract type Rule end
 abstract type Action <: Rule end
 abstract type Interaction <: Rule end
@@ -20,7 +26,7 @@ abstract type StaticElement <: Element end
 abstract type DynamicElement <: Element end
 abstract type Agent <: DynamicElement end
 """
-    position (::DynamicElement)::CartesianIndex{2}
+    position (::DynamicElement)::SVector{2, Int64}
 
 position of an element
 """
@@ -75,6 +81,10 @@ policy(agent::Butterfly) = agent.policy
 mutable struct Player <: Agent
     position::SVector{2, Int64}
     policy::Policy
+
+    function Player(position)
+        new(position, no_policy)
+    end
 end
 position(agent::Player) = agent.position
 policy(agent::Player) = agent.policy
@@ -96,17 +106,17 @@ end
 include("interaction.jl")
 
 function step(state::GameState, imap::InteractionMap)::GameState
-    # queue actions
+    # action phase
     l_agents = length(state.agents)
     queues = [PriorityQueue{Rule, Int64} for _ in 1:l_agents] # TODO: optimize
     for i = 1:l_agents
         agent = state.agents[i]
         obs = observe(agent, state)
         action = plan(agent, obs, policy)
-        sync!(queues[i], action)
+        @show sync!(queues[i], action)
     end
 
-    # detect interactions (collisions)
+    # static interaction phase
     kdtree = KDTree(potential_positions)
     for i = 1:l_agents
         pot_pos = lookahead(agent, queues[i]) 
@@ -117,6 +127,7 @@ function step(state::GameState, imap::InteractionMap)::GameState
         sync!(queues[i], rule)
     end
 
+    # dynamic interaction phase
     for i = 1:l_agents
         agent = new_agents[i]
         pot_pos = lookahead(agent, queues[i]) 
@@ -132,27 +143,10 @@ function step(state::GameState, imap::InteractionMap)::GameState
     end
 
     # resolve the queue
+
+    return state
 end
 
-
-function sync!(queue::PriorityQueue, action::Action)
-    action_type = typeof(action)
-    action_type == Move && (code = 1)
-    action_type == Stepback && (code = 0)
-    # add Move or Stepback, if both exist then delete everything
-    try 
-        lowest = peek(queue)
-    catch BoundsError
-        enqueue!(queue, action, code)
-    else
-        code == lowest || dequeue!(queue)
-        code == lowest && enqueue!(queue, action, code)
-    end
-end
-
-function sync!(queue::PriorityQueue, collision::Interaction) # TODO
-    
-end
 
 function collisions(state, agent_pos, kdtree)
     # is anything present at this location?
@@ -256,15 +250,16 @@ function plan(agent::Player, obs::Observation, policy=policy(agent))
     return direction
 end
 
-#=
+
 # we can have different policies for different units in the game
 # here is an "dummy" example, that just picks a random action
 struct RandomPolicy <: Policy end
 plan(agent::Agent, obs::Observation, policy::RandomPolicy) = rand(actionspace(agent))
-=#
-
+struct NoPolicy <: Policy end
+const no_policy = NoPolicy()
 
 
 include("scene.jl")
+include("interaction.jl")
 include("../test/runtests.jl")
 end

@@ -1,10 +1,10 @@
+using ButterflyGame
 using Random
 using Colors, Images
 using Gen
 
 export random_scene, 
         render_image
-
 
 function random_scene(bounds::Tuple, density::Float64, npinecones::Int)
     m = Matrix{StaticElement}(fill(floor, bounds)) 
@@ -39,13 +39,15 @@ function random_scene(bounds::Tuple, density::Float64, npinecones::Int)
         last <= i <= len && (m[i] = obstacle)
     end
 
+    scene = GridScene(bounds, m)
+
     # agents
-    scene = spawn_agents(GridScene(bounds, m))
+    # scene = spawn_agents(GridScene(bounds, m))
     return scene
 end
 
 
-function spawn_agents(scene::GridScene)
+#= function spawn_agents(scene::GridScene)
     m = scene.items
 
     # butterflies: Poisson distribution
@@ -69,7 +71,7 @@ function spawn_agents(scene::GridScene)
         i = rand(m)
     end
     m[i] = player
-end
+end =#
 
 
 """
@@ -102,9 +104,8 @@ function render_image(scene::GridScene)
     
     img[findall(x -> x == obstacle, items)] .= color(obstacle)
     img[findall(x -> x == pinecone, items)] .= color(pinecone)
-    img[findall(x -> x == butterfly, items)] .= color(butterfly)
-    img[findall(x -> x == player, items)] .= color(player)
-    
+    #img[findall(x -> x == butterfly, items)] .= color(butterfly)
+    #img[findall(x -> x == player, items)] .= color(pinecone)
     # save & open image
     #img = imresize(img, ratio=25)
     output_path = "downloads/output_img.png"

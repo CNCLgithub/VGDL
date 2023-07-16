@@ -1,7 +1,7 @@
 using ButterflyGame
 export InteractionMap,
-        Stepback, Back,
-        Move, Up, Down, Left, Right
+        interaction_set,
+        compile_interaction_set
 
 #= InteractionSet
         avatar    wall   > stepBack
@@ -28,26 +28,69 @@ The transformation applied at the lens.
 """
 function transform end
 
-struct Move 
+struct CompositeRule <: Rule
+    lens::Lens
+    transform::Function
+end
+
+struct Move <: Action
     dir::SVector{2, Int64}
 end
 lens(::Move) = @optic _.position
 transform(m::Move) = x -> x + m.dir
-const Up = Move([-1,0])
-const Down = Move([1,0])
-const Left = Move([0,-1])
-const Right = Move([0,1])
+const up = Move([-1,0])
+const down = Move([1,0])
+const left = Move([0,-1])
+const right = Move([0,1])
 
 struct Stepback end
-const Back = Stepback()
+const back = Stepback()
 
 function compose end
-function compose(::Move, ::Stepback)
-    NoAction()
+
+
+function sync!(queue::PriorityQueue, rule::Move)
+    enqueue!(queue, rule, 1)
+    return nothing
 end
 
+function sync!(queue::PriorityQueue, rule::Stepback)
+    for r in queue
+        if typeof(r) === Move
+            delete!(queue, r)
+            break
+        end
+    end
+    return nothing
+end
 
-const IPair = Pair{ButterflyGame.Element, ButterflyGame.Element}
+function sync!(queue::PriorityQueue, rule::Kill)
+    empty!(queue)
+    enqueue!(queue, rule, 0)
+    return nothing
+end
+
+# Compose all the lenses
+function resolve(queues::Vector{PriorityQueue}, g::Game, st::GameState) # maybe game-specific
+    n_agents = length(queues)
+    agent_rules = Vector{Rule}(undef, n_agents)
+    cr = CompositeRule() # TODO
+    for i = 1:n_agents
+        agent_lens = @optic _.agents[i]
+        for r in queues[i]
+            lr = lens(r)
+            tr = transform(r)
+            new_lens = opcompose(agent_lens, lr)
+            d[new_lens] = tr # REVIEW
+        end
+    end
+    batch_lens = reduce(++, keys(d))
+    targs = getall(st, batch_lens)
+    tvals = # TODO: apply values of d to targs
+    setall(st, batch_lens, tvals)
+end
+
+const IPair = Pair{Element, Element}
 # const Interaction = Pair{IPair, Function}
 const InteractionSet = Vector{Interaction}
 
@@ -71,16 +114,16 @@ function compile_interaction_set(g::Game)
     iset = interaction_set(g)
     # a temporary mapping of type pairs ->
     # a vector of functions that will be composed
-    vmap = Dict{IPair, Vector{Function}}()
+    vmap = Dict{IPair, Vector{Interaction}}()
     imap = InteractionMap()
     if haskey(vmap, tpair)
-        push!(vmap[tpair], func)
+        push!(vmap[tpair], inter)
     else
-        vmap[tpair] = [func]
+        vmap[tpair] = [inter]
     end
     # compose the lenses
     imap = InteractionMap()
-    for (tpair, vfunc) in vmap
+    for (tpair, vinter) in vmap
         imap[tpair] = ∘(vmap[tpair])
     end
     return imap
