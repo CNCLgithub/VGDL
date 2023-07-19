@@ -15,8 +15,8 @@ export Game,
 
 
 # define the main interface
-struct Game end
-const game = Game()
+abstract type Game end
+struct BG <: Game end # TODO: rename
 abstract type Rule end
 abstract type Action <: Rule end
 abstract type Interaction <: Rule end
@@ -113,7 +113,7 @@ function step(state::GameState, imap::InteractionMap)::GameState
         agent = state.agents[i]
         obs = observe(agent, state)
         action = plan(agent, obs, policy)
-        @show sync!(queues[i], action)
+        sync!(queues[i], action)
     end
 
     # static interaction phase
@@ -123,7 +123,7 @@ function step(state::GameState, imap::InteractionMap)::GameState
         elem = state.scene[pot_pos] # could be a `Floor` | `Obstacle` | `Pinecone`
         key = typeof(agent) => typeof(elem)
         haskey(imap, key) || continue
-        rule = imap[key]
+        rule = imap[key](i, pot_pos)
         sync!(queues[i], rule)
     end
 

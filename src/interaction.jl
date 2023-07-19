@@ -44,6 +44,9 @@ const left = Move([0,-1])
 const right = Move([0,1])
 
 struct Stepback end
+function stepback(l, r)
+    Stepback()
+end
 const back = Stepback()
 
 function compose end
@@ -64,58 +67,83 @@ function sync!(queue::PriorityQueue, rule::Stepback)
     return nothing
 end
 
-function sync!(queue::PriorityQueue, rule::Kill)
+function sync!(queue::PriorityQueue, rule::Die, a::Int64, b)
     empty!(queue)
     enqueue!(queue, rule, 0)
     return nothing
 end
 
-# Compose all the lenses
+# compose all the lenses
 function resolve(queues::Vector{PriorityQueue}, g::Game, st::GameState) # maybe game-specific
     n_agents = length(queues)
-    agent_rules = Vector{Rule}(undef, n_agents)
-    cr = CompositeRule() # TODO
+
+    # change death and birth queue
+    d_queue = Dict{Function, Function}() # lens(), transform()
+    b_queue = Dict{Function, Function}()
+    c_queue = Dict{Function, Function}() 
+
     for i = 1:n_agents
-        agent_lens = @optic _.agents[i]
         for r in queues[i]
             lr = lens(r)
             tr = transform(r)
-            new_lens = opcompose(agent_lens, lr)
-            d[new_lens] = tr # REVIEW
+
+            # sort r into a queue
+            if r == die
+                push!(d_queue, lr => tr)
+            else
+                push!(b_queue, lr => tr)
+            end
+            # check if lens r exist in queue
+            if !haskey(c_queue, lr)
+                push!(c_queue, lr => tr)
+            else
+                continue
+            end
         end
     end
-    batch_lens = reduce(++, keys(d))
-    targs = getall(st, batch_lens)
-    tvals = # TODO: apply values of d to targs
-    setall(st, batch_lens, tvals)
+
+    batch_lens = reduce(++, keys(c_queue))
+    targs = getall(st, batch_lens) # returns selected parts of st
+    tvals = values(c_queue)
+
+    # apply tr to targs
+    treturn = collect(Iterators.map(x -> tvals[x](targs[x]), 1:length(targs)))
+    #= for i in 1:length(targs)
+        val = tvals[i]
+        arg = targs[i]
+        val(arg)
+    end =#
+    
+    setall(st, batch_lens, treturn)
 end
+
 
 const IPair = Pair{Element, Element}
 # const Interaction = Pair{IPair, Function}
-const InteractionSet = Vector{Interaction}
+# const InteractionSet = Vector{Interaction}
 
 # REVIEW: check if type variables are slow
-function interaction_set(::Game)
-    set = Interaction[ 
+function interaction_set(::BG)
+    set = Function[ 
         (Player => Obstacle) => stepback,
-        (Butterfly => Obstacle) => stepback,
+        #= (Butterfly => Obstacle) => stepback,
         (Butterfly => Player) => changescore,
-        (Butterfly => Player) => kill,
+        (Butterfly => Player) => die,
+        (Butterfly => Pinecone) => kill,
         (Butterfly => Pinecone) => clone,
-        (Pinecone => Butterfly) => kill,
+        (Pinecone => Butterfly) => die, =#
     ]
 end
         
-const InteractionMap = Dict{Pair, Interaction}
+const InteractionMap = Dict{IPair, Function}
         
 
-# TODO: compose lenses (batchlens) - move & stepback & values
-function compile_interaction_set(g::Game)
+function compile_interaction_set(g::Game) # Generic
     iset = interaction_set(g)
     # a temporary mapping of type pairs ->
     # a vector of functions that will be composed
-    vmap = Dict{IPair, Vector{Interaction}}()
-    imap = InteractionMap()
+    vmap = Dict{IPair, Vector{Function}}()
+    imap = InteractionMap() 
     if haskey(vmap, tpair)
         push!(vmap[tpair], inter)
     else
@@ -128,6 +156,10 @@ function compile_interaction_set(g::Game)
     end
     return imap
 end
+
+# composite rule 
+# args: two constructors for rules
+# such that the left & right are broadcasted to the constructor rules
 
 
 #= function changescore(state::GameState, butterfly::Butterfly, player::Player)
