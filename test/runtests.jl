@@ -9,15 +9,17 @@ function initial()
 end
 
 function collision_test()
-    g = Game()
+    g = BG()
     scene = random_scene((10, 10), 0.25, 0)
     render_image(scene)
     state = GameState(scene)
     agents = state.agents
     p = Player([2,2])
     push!(agents, p)
+    b = Butterfly([2,3])
+    push!(agents, b)
     imap = compile_interaction_set(g)
-    step(state, imap)
+    @show step(state, imap)
 end
 
 function level_zero()
