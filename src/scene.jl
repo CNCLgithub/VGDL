@@ -2,6 +2,7 @@ using ButterflyGame
 using Random
 using Colors, Images
 using Gen
+using Accessors
 
 export random_scene, 
         render_image
@@ -97,15 +98,23 @@ const blue_color = RGB{Float32}(0, 0, 1)
 color(::Player) = blue_color
 
 
-function render_image(scene::GridScene)
+function render_image(state::GameState)
+    # StaticElements
+    scene = state.scene
     bounds = scene.bounds
     items = scene.items
     img = fill(color(floor), bounds)
-    
     img[findall(x -> x == obstacle, items)] .= color(obstacle)
     img[findall(x -> x == pinecone, items)] .= color(pinecone)
-    #img[findall(x -> x == butterfly, items)] .= color(butterfly)
-    #img[findall(x -> x == player, items)] .= color(pinecone)
+    
+    # DynamicElements
+    agents = state.agents
+    for i in eachindex(agents)
+        @show agent = agents[i]
+        @show position = agent.position
+        img[position] = color(agent)
+    end
+
     # save & open image
     #img = imresize(img, ratio=25)
     output_path = "downloads/output_img.png"

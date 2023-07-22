@@ -6,13 +6,14 @@ using Setfield
 using AccessorsExtra
 using DataStructures 
 
-export Game,
+export Game, BG,
         GameState, 
         GridScene,
         Element,
         Agent, Player, Butterfly,
         Rule,
-        floor, obstacle, pinecone
+        floor, obstacle, pinecone,
+        update_step
 
 
 # define the main interface
@@ -56,9 +57,9 @@ mutable struct GameState
     scene::GridScene
     agents::Vector{Agent}
     reward::Float64
-
-    GameState(scene) = new(scene, Agent[], 0)
 end
+GameState(scene) = GameState(scene, Agent[], 0)
+
 
 struct Obstacle <: StaticElement end
 const obstacle = Obstacle()
@@ -72,12 +73,8 @@ mutable struct Butterfly <: Agent
     position::SVector{2, Int64}
     energy::Float64
     policy::Policy
-
-    function Butterfly(position)
-        new(position, 0, RandomPolicy())
-    end
 end
-
+Butterfly(position) = Butterfly(position, 0, RandomPolicy())
 position(agent::Butterfly) = agent.position
 policy(agent::Butterfly) = agent.policy
 
@@ -85,18 +82,15 @@ policy(agent::Butterfly) = agent.policy
 mutable struct Player <: Agent
     position::SVector{2, Int64}
     policy::Policy
-
-    function Player(position)
-        new(position, no_policy)
-    end
 end
+Player(position) = Player(position, no_policy)
 position(agent::Player) = agent.position
 policy(agent::Player) = agent.policy
 
 
 include("interaction.jl")
 
-function step(state::GameState, imap::InteractionMap)::GameState
+function update_step(state::GameState, imap::InteractionMap)::GameState
     # action phase
     l_agents = length(state.agents)
     queues = [PriorityQueue{Rule, Int64}() for _ in 1:l_agents] # TODO: optimize

@@ -3,23 +3,24 @@ using ButterflyGame
 
 
 function initial()
-    scene = GridScene((30, 30))
     scene = random_scene((30, 30), 0.25, 40)
-    render_image(scene)
+    state = GameState(scene)
+    render_image(state)
 end
 
 function collision_test()
     g = BG()
     scene = random_scene((10, 10), 0.25, 0)
-    render_image(scene)
     state = GameState(scene)
     agents = state.agents
     p = Player([2,2])
     push!(agents, p)
     b = Butterfly([2,3])
     push!(agents, b)
+
+    render_image(state)
     imap = compile_interaction_set(g)
-    @show step(state, imap)
+    update_step(state, imap)
 end
 
 function level_zero()
@@ -52,8 +53,9 @@ function level_zero()
         1 <= i <= col && (m[i] = obstacle)
         last <= i <= len && (m[i] = obstacle)
     end
-    
-    render_image(scene)
+
+    state = GameState(scene)
+    render_image(state)
 end
 
 

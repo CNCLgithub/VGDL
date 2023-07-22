@@ -36,11 +36,14 @@ struct CompositeRule <: Rule
     transform::Function
 end
 
+get_agent(i::Int) = @optics _.agents[i]
+
 struct Move <: Action
     dir::SVector{2, Int64}
 end
-lens(::Move) = @optics _.position
+lens(::Move) = @optic _.position
 transform(m::Move) = x -> x + m.dir
+
 const up = Move([-1,0])
 const down = Move([1,0])
 const left = Move([0,-1])
@@ -95,8 +98,8 @@ function resolve(queues::Vector{PriorityQueue{Rule, Int64, Base.Order.ForwardOrd
 
     for i = 1:n_agents
         for (r, p) in queues[i]
-            lr = lens(r)
-            tr = transform(r)
+            @show lr = opcompose(get_agent(i), lens(r))
+            @show tr = transform(r)
 
             # sort r into a queue
             if r == die
@@ -114,16 +117,16 @@ function resolve(queues::Vector{PriorityQueue{Rule, Int64, Base.Order.ForwardOrd
     end
 
     batch_lens = reduce(++, keys(c_queue))
-    targs = getall(st, batch_lens) # returns selected parts of st
-    tvals = values(c_queue)
+    @show targs = getall(st, batch_lens) # returns selected parts of st
+    @show tvals = values(c_queue)
 
     # apply tr to targs
-    treturn = collect(Iterators.map(x -> tvals[x](targs[x]), 1:length(targs)))
     #= for i in 1:length(targs)
         val = tvals[i]
         arg = targs[i]
         val(arg)
     end =#
+    treturn = collect(map((f, arg) -> f(arg), tvals, targs))
     
     setall(st, batch_lens, treturn)
 end
