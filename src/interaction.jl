@@ -197,6 +197,6 @@ end
 
 function kill(pinecone::Pinecone, butterfly::Butterfly)
     m = scene.items
-    m[position(butterfly)] = floor
+    m[position(butterfly)] = ground
 end
  =#

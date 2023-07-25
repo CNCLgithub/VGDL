@@ -1,6 +1,7 @@
 using ButterflyGame
 using Random
 using Colors, Images
+using Interpolations
 using Gen
 using Accessors
 
@@ -8,7 +9,7 @@ export random_scene,
         render_image
 
 function random_scene(bounds::Tuple, density::Float64, npinecones::Int)
-    m = Matrix{StaticElement}(fill(floor, bounds)) 
+    m = Matrix{StaticElement}(fill(ground, bounds)) 
 
     # obstacles first
     @inbounds for i = eachindex(m)
@@ -18,7 +19,7 @@ function random_scene(bounds::Tuple, density::Float64, npinecones::Int)
     # pinecones second
     pine_map = []
     @inbounds for i = eachindex(m)
-        if m[i] == floor
+        if m[i] == ground
             push!(pine_map, i)
         end
     end
@@ -57,7 +58,7 @@ end
     n = poisson(density)
     b_map = []
     @inbounds for i = eachindex(m)
-        if m[i] == floor
+        if m[i] == ground
             push!(b_map, i)
         end
     end
@@ -68,7 +69,7 @@ end
 
     # player
     i = rand(m)
-    while m[i] != floor
+    while m[i] != ground
         i = rand(m)
     end
     m[i] = player
@@ -83,7 +84,7 @@ Color of an element.
 function color end
 
 const gray_color = RGB{Float32}(0.8, 0.8, 0.8)
-color(::Floor) = gray_color
+color(::Ground) = gray_color
 
 const black_color = RGB{Float32}(0, 0, 0)
 color(::Obstacle) = black_color
@@ -103,20 +104,21 @@ function render_image(state::GameState)
     scene = state.scene
     bounds = scene.bounds
     items = scene.items
-    img = fill(color(floor), bounds)
+    img = fill(color(ground), bounds)
     img[findall(x -> x == obstacle, items)] .= color(obstacle)
     img[findall(x -> x == pinecone, items)] .= color(pinecone)
     
     # DynamicElements
     agents = state.agents
     for i in eachindex(agents)
-        @show agent = agents[i]
-        @show position = agent.position
-        img[position] = color(agent)
+        agent = agents[i]
+        position = agent.position
+        @show img[position] = color(agent)
+        @show img[position]
     end
 
     # save & open image
-    #img = imresize(img, ratio=25)
+    # img = imresize(img, (500,500)) # TODO: fix
     output_path = "downloads/output_img.png"
     save(output_path, img)
     run(`open $output_path`)

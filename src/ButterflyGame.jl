@@ -7,12 +7,10 @@ using AccessorsExtra
 using DataStructures 
 
 export Game, BG,
-        GameState, 
-        GridScene,
-        Element,
+        GameState, GridScene, getindex,
+        Element, ground, obstacle, pinecone,
         Agent, Player, Butterfly,
         Rule,
-        floor, obstacle, pinecone,
         update_step
 
 
@@ -51,7 +49,7 @@ mutable struct GridScene <: Scene
     items::Matrix{StaticElement}
 end
 
-GridScene(bounds) = GridScene(bounds, fill(floor, bounds))
+GridScene(bounds) = GridScene(bounds, fill(ground, bounds))
 
 mutable struct GameState
     scene::GridScene
@@ -65,8 +63,8 @@ struct Obstacle <: StaticElement end
 const obstacle = Obstacle()
 struct Pinecone <: StaticElement end
 const pinecone = Pinecone()
-struct Floor <: StaticElement end
-const floor = Floor()
+struct Ground <: StaticElement end
+const ground = Ground()
 
 
 mutable struct Butterfly <: Agent
@@ -87,6 +85,11 @@ Player(position) = Player(position, no_policy)
 position(agent::Player) = agent.position
 policy(agent::Player) = agent.policy
 
+function Base.getindex(A::Array, index::SVector{2, Int64})
+    y, x = index
+    return A[y, x]
+end
+
 
 include("interaction.jl")
 
@@ -104,25 +107,25 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
     # static interaction phase
     for i = 1:l_agents 
         agent = state.agents[i]
-        @show pot_pos = lookahead(agent, queues[i]) 
-        elem = state.scene.items[pot_pos] # could be a `Floor` | `Obstacle` | `Pinecone`
+        pot_pos = lookahead(agent, queues[i]) 
+        elem = state.scene.items[pot_pos] # could be a `Ground` | `Obstacle` | `Pinecone`
         key = typeof(agent) => typeof(elem)
         haskey(imap, key) || continue
-        rule = imap[key](i, pot_pos)
+        @show rule = imap[key](i, pot_pos)
         sync!(queues[i], rule)
     end
 
     # dynamic interaction phase
     for i = 1:l_agents
         agent = state.agents[i]
-        pot_pos = lookahead(agent, queues[i])
+        @show pot_pos = lookahead(agent, queues[i])
         # Check the agent's position on the gridscene
         # kdtree = KDTree(pot_pos)
         cs = collisions(state, pot_pos)
         # Update
         agent_type = typeof(agent)
         for collider in cs
-            key = agent_type => typeof(collider)
+            @show key = agent_type => typeof(collider)
             haskey(imap, key) || continue
             sync!(queues[i], imap[key])
         end 
@@ -223,27 +226,27 @@ function observe(agent::Player, state::GameState)::Observation
     V = SVector{2, Int32}
     positions = Vector{V}(undef, l_agents-1)
     for i = 2:l_agents 
-        agent = state.agents[i]
-        y, x = agent.position[1], agent.position[2]
-        positions[i-1] = [x, y]
+        butterfly = state.agents[i]
+        y, x = butterfly.position[1], butterfly.position[2]
+        positions[i-1] = [y, x]
     end
     # nearest neighbor search
     kdtree = KDTree(positions)
     y, x = agent.position[1], agent.position[2]
-    index, dist = nn(kdtree, [x, y])
+    index, dist = nn(kdtree, [y, x])
     # returns the location of the nearest butterfly
     return PosObs(positions[index])
 end
 
 function plan(agent::Player, obs::Observation, policy=policy(agent))
     y, x = agent.position[1], agent.position[2]
-    bx, by = obs.data[1], obs.data[2]
+    by, bx = obs.data[1], obs.data[2]
     # moves toward the nearest butterfly
     direction = if y > by
         up
     elseif y < by
         down
-    elseif x > bx
+    elseif x < bx
         right
     else
         left
