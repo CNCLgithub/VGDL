@@ -47,8 +47,8 @@ abstract type Scene end
 abstract type Policy end
 struct GreedyPolicy <: Policy end
 const greedy_policy = GreedyPolicy()
-struct NoPolicy <: Policy end
-const no_policy = NoPolicy()
+struct RandomPolicy <: Policy end
+const random_policy = RandomPolicy()
 
 
 mutable struct GridScene <: Scene 
@@ -78,7 +78,7 @@ mutable struct Butterfly <: Agent
     energy::Float64
     policy::Policy
 end
-Butterfly(position) = Butterfly(position, 0, RandomPolicy())
+Butterfly(position) = Butterfly(position, 0, random_policy)
 position(agent::Butterfly) = agent.position
 policy(agent::Butterfly) = agent.policy
 
@@ -234,11 +234,7 @@ end
 
 # we can have different policies for different units in the game
 # here is an "dummy" example, that just picks a random action
-struct RandomPolicy <: Policy end
 plan(policy::RandomPolicy, agent::Agent, obs::Observation) = rand(actionspace(agent))
-function plan(::NoPolicy, agent::Agent, ::NoObservation)
-    rand(actionspace(agent))
-end
 
 include("scene.jl")
 include("../test/runtests.jl")

@@ -116,6 +116,10 @@ function resolve(queues::Vector, st::GameState) # maybe game-specific
         end
     end
 
+    if isempty(c_queue)
+        return st
+    end
+
     batch_lens = reduce(++, keys(c_queue))
     @show targs = getall(st, batch_lens) # returns selected parts of st
     @show tvals = values(c_queue)
