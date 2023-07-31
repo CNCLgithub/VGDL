@@ -71,10 +71,10 @@ function sync!(queue::PriorityQueue, rule::Move)
     return nothing
 end
 
-function sync!(queue::PriorityQueue, rule::typeof(stepback))
+function sync!(queue::PriorityQueue, ::Stepback)
     for r in queue
-        if typeof(r) === Move
-            delete!(queue, r)
+        if typeof(r.first) == Move
+            delete!(queue, r.first)
             break
         end
     end
@@ -88,7 +88,7 @@ function sync!(queue::PriorityQueue, rule::Interaction, a::Int64, b)
 end
 
 # compose all the lenses
-function resolve(queues::Vector{PriorityQueue{Rule, Int64, Base.Order.ForwardOrdering}}, st::GameState) # maybe game-specific
+function resolve(queues::Vector, st::GameState) # maybe game-specific
     n_agents = length(queues)
 
     # change death and birth queue
@@ -126,9 +126,9 @@ function resolve(queues::Vector{PriorityQueue{Rule, Int64, Base.Order.ForwardOrd
         arg = targs[i]
         val(arg)
     end =#
-    treturn = collect(map((f, arg) -> f(arg), tvals, targs))
+    @show treturn = collect(map((f, arg) -> f(arg), tvals, targs))
     
-    setall(st, batch_lens, treturn)
+    st = setall(st, batch_lens, treturn)
 end
 
 

@@ -6,16 +6,16 @@ using Gen
 using Accessors
 
 export random_scene, 
+        generate_map,
         render_image
 
-function random_scene(bounds::Tuple, density::Float64, npinecones::Int)
+function random_scene(bounds::Tuple, density::Float64, npinecones::Int)::GridScene
     m = Matrix{StaticElement}(fill(ground, bounds)) 
 
     # obstacles first
     @inbounds for i = eachindex(m)
         rand() < density && (m[i] = obstacle)
     end
-
     # pinecones second
     pine_map = []
     @inbounds for i = eachindex(m)
@@ -27,7 +27,6 @@ function random_scene(bounds::Tuple, density::Float64, npinecones::Int)
     @inbounds for i = 1:npinecones
         m[pine_map[i]] = pinecone
     end
-
     # borders last
     col = bounds[1]
     row = bounds[2]
@@ -46,6 +45,60 @@ function random_scene(bounds::Tuple, density::Float64, npinecones::Int)
     # agents
     # scene = spawn_agents(GridScene(bounds, m))
     return scene
+end
+
+
+function generate_map(::BG, setup::String)::GameState
+    h = count(==('\n'), setup) + 1
+    w = 0
+    for char in setup
+        if char == '\n'
+            break
+        end
+        w += 1
+    end
+    scene = GridScene((h, w))
+    m = scene.items
+    V = SVector{2, Int64}
+    p_pos = Vector{V}()
+    b_pos = Vector{V}()
+    
+    # StaticElements
+    setup = replace(setup, r"\n" => "")
+    setup = reshape(collect(setup), (w,h))
+    setup = permutedims(setup, (2,1))
+
+    for (index, char) in enumerate(setup)
+        if char == 'w'
+            m[index] = obstacle
+        elseif char == '.'
+            m[index] = ground
+        elseif char == '0'
+            m[index] = pinecone
+        else
+            ci = CartesianIndices(m)[index]
+            if char == '1'
+                push!(b_pos, ci)
+            else
+                push!(p_pos, ci)
+            end
+        end
+    end
+
+    # DynamicElements
+    state = GameState(scene)
+    agents = state.agents
+    for pos in p_pos
+        typeof(pos)
+        p = Player(pos)
+        push!(agents, p)
+    end
+    for pos in b_pos
+        b = Butterfly(pos)
+        push!(agents, b)
+    end
+
+    return(state)
 end
 
 
@@ -112,13 +165,13 @@ function render_image(state::GameState)
     agents = state.agents
     for i in eachindex(agents)
         agent = agents[i]
-        position = agent.position
-        @show img[position] = color(agent)
-        @show img[position]
+        @show position = agent.position
+        lens = get_element(img, position)     
+        img = Accessors.set(img, lens, color(agent))
     end
 
     # save & open image
-    # img = imresize(img, (500,500)) # TODO: fix
+    img = imresize(img, ratio = 10) # TODO: fix
     output_path = "downloads/output_img.png"
     save(output_path, img)
     run(`open $output_path`)
