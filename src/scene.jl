@@ -152,7 +152,7 @@ const blue_color = RGB{Float32}(0, 0, 1)
 color(::Player) = blue_color
 
 
-function render_image(state::GameState)
+function render_image(state::GameState, path::String)
     # StaticElements
     scene = state.scene
     bounds = scene.bounds
@@ -172,7 +172,6 @@ function render_image(state::GameState)
 
     # save & open image
     img = imresize(img, ratio = 10) # TODO: fix
-    output_path = "downloads/output_img.png"
-    save(output_path, img)
-    run(`open $output_path`)
+    save(path, img)
+    #run(`open $path`)
 end

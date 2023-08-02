@@ -41,10 +41,33 @@ function collision_test(level::String)
 
     #render_image(state)
     imap = compile_interaction_set(g)
-    state = update_step(state, imap)
-    render_image(state)
+
+    for i in 1:10
+        state = update_step(state, imap)
+        render_image(state, "downloads/$(i).png")
+    end
+end
+
+function test_two()
+    g = BG()
+    scene = random_scene((20,20), 0., 0)
+    state = GameState(scene)
+    agents = state.agents
+
+    p = Player([2,2])
+    push!(agents, p)
+    #=b = Butterfly([3,3])
+    push!(agents, b)=#
+
+    imap = compile_interaction_set(g)
+
+    for i in 1:10
+        state = update_step(state, imap)
+        render_image(state, "downloads/$(i).png")
+    end
 end
 
 #initial()
-collision_test(easy)
+#collision_test(easy)
 #collision_test(level_zero)
+test_two()

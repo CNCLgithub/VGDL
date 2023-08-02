@@ -54,6 +54,15 @@ function actionspace(::Agent)
     return all_moves
 end
 
+struct Applicator <: Rule
+    lens::Lens
+    transform::Function
+
+    function Applicator(r::Rule, l::Lens)
+        new(opcompose(l, lens(r)), transform(r))
+    end
+end
+
 struct Stepback end
 function stepback(l, r)
     Stepback()
@@ -92,13 +101,13 @@ function resolve(queues::Vector, st::GameState) # maybe game-specific
     n_agents = length(queues)
 
     # change death and birth queue
-    d_queue = Dict{Function, Function}() # lens(), transform()
-    b_queue = Dict{Function, Function}()
-    c_queue = Dict{Function, Function}() 
+    d_queue = Dict{Lens, Function}() # lens(), transform()
+    b_queue = Dict{Lens, Function}()
+    c_queue = Dict{Lens, Function}() 
 
     for i = 1:n_agents
         for (r, p) in queues[i]
-            @show lr = opcompose(get_agent(i), lens(r))
+            @show lr = lens(r)
             @show tr = transform(r)
 
             # sort r into a queue

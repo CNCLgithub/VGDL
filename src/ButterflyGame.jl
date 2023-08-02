@@ -19,9 +19,11 @@ export Game, BG,
 # define the main interface
 abstract type Game end
 struct BG <: Game end # TODO: rename
-abstract type Rule end
-abstract type Action <: Rule end
-abstract type Interaction <: Rule end
+abstract type Rule{T} end
+abstract type Effect end
+abstract type ChangeEffect <: Effect end
+abstract type DeathEffect <: Effect end
+abstract type BirthEffect <: Effect end
 abstract type Observation end
 struct PosObs <: Observation
     data::SVector{2, Int32}
@@ -103,9 +105,7 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
     kdtree = KDTree(lookahead(state.agents))
     for i = 1:l_agents
         agent = state.agents[i]
-        newdata = filter(x -> x!=agent.position, kdtree.data)
-        newtree = KDTree(newdata)
-        obs = observe(agent, state, newtree)
+        obs = observe(agent, i, state, kdtree)
         action = plan(agent, obs)
         sync!(queues[i], action)
     end
@@ -130,12 +130,11 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
         agent = state.agents[i]
         @show pot_pos = positions[i]
         # Check the agent's position on the gridscene
-        newdata = filter(x -> x!=agent.position, kdtree.data)
-        newtree = KDTree(newdata)
-        @show cs = collisions(state, newtree, pot_pos)
+        @show cs = collisions(kdtree, pot_pos, 1, i)
         # Update
         agent_type = typeof(agent)
-        for collider in cs
+        for ci in cs
+            collider = state.agents[ci]
             @show key = agent_type => typeof(collider)
             haskey(imap, key) || continue
             sync!(queues[i], imap[key])
@@ -165,17 +164,10 @@ function lookahead(agents::Vector{Agent}, queues::Vector)
     return positions
 end
 
-function collisions(state, kdtree, agent_pos)
+function collisions(kdtree, agent_pos, radius::Float, agent_index::Int) 
     # is anything present at this location?
-    idxs = inrange(kdtree, agent_pos, 1.0) # length > 1
-    colliders = []
-    if length(idxs) == 0
-        return colliders
-    end
-    for i in idxs
-        collider = state.agents[i]
-        push!(colliders, collider)
-    end
+    idxs = inrange(kdtree, agent_pos, radius) # length < 1
+    colliders = filter(x -> x != agent_index, idxs)
     return colliders
 end
 
@@ -186,16 +178,20 @@ function observe(::Agent, ::GameState)
     return NoObservation()
 end
 
-function observe(agent::Player, state::GameState, kdtree::KDTree)::Observation
+function observe(agent::Player, agent_index::Int, state::GameState, kdtree::KDTree)::Observation
     # get all butterfly locations
     l_agents = length(state.agents)
-    y, x = agent.position
     if l_agents == 1
         return NoObservation()
     end
-    index, dist = nn(kdtree, [y, x])
+
+    #TODO: ensure returns in order
+    agent_pos = kdtree.data[agent_index]
+    cs = collisions(kdtree, agent_pos, 50, agent_index) # TODO: get dimensions from state
+    ci = cs[1]
+
     # returns the location of the nearest butterfly
-    position = kdtree.data[index]
+    position = kdtree.data[ci]
     return PosObs(position)
 end
 
@@ -203,18 +199,13 @@ function observe(::Butterfly, ::GameState, ::KDTree)
     return NoObservation()
 end
 
-function plan(agent::Agent, obs::Observation)
-    plan(policy(agent), agent, obs)
+function plan(agent::Agent, agent_index::Int, obs::Observation)
+    plan(policy(agent), agent, agent_index, obs)
 end
 
-function plan(::GreedyPolicy, agent::Player, obs::PosObs)
+function plan(::GreedyPolicy, agent::Player, agent_index::Int, obs::PosObs)
     y, x = agent.position[1], agent.position[2]
     by, bx = obs.data[1], obs.data[2]
-    @show agent.position
-    @show obs
-    @show y, x, by, bx
-    @show x, bx
-    @assert x < bx
     # moves toward the nearest butterfly
     direction = if y > by
         up
@@ -225,17 +216,16 @@ function plan(::GreedyPolicy, agent::Player, obs::PosObs)
     else
         left
     end
-    return direction
+    Applicator(direction, get_agent(agent_index))
 end
 
-function plan(::GreedyPolicy, agent::Agent, ::NoObservation)
+function plan(::GreedyPolicy, agent::Agent, ::Int, ::NoObservation)
     rand(actionspace(agent))
 end
 
 # we can have different policies for different units in the game
 # here is an "dummy" example, that just picks a random action
-plan(policy::RandomPolicy, agent::Agent, obs::Observation) = rand(actionspace(agent))
+plan(policy::RandomPolicy, agent::Agent, ::Int, ::Observation) = rand(actionspace(agent))
 
 include("scene.jl")
-include("../test/runtests.jl")
 end
