@@ -38,7 +38,7 @@ end
 
 get_agent(i::Int) = @optics _.agents[i]
 
-struct Move <: Action
+struct Move <: Rule{ChangeEffect}
     dir::SVector{2, Int64}
 end
 lens(::Move) = @optic _.position
@@ -54,26 +54,25 @@ function actionspace(::Agent)
     return all_moves
 end
 
-struct Applicator <: Rule
-    lens::Lens
-    transform::Function
-
-    function Applicator(r::Rule, l::Lens)
-        new(opcompose(l, lens(r)), transform(r))
-    end
-end
-
 struct Stepback end
 function stepback(l, r)
     Stepback()
 end
 
-struct Die end
-const die = Die()
-struct Clone end
-const clone = Clone()
+struct Applicator{T<:Effect} <: Rule{T}
+    lens::Lens
+    transform::Function
+    base::Rule{T}
+    function Applicator(r::Rule{T<:Effect}, l::Lens)
+        new{T}(opcompose(l, lens(r)), transform(r), r)
+    end
+end
 
-function compose end
+struct Clone <: Rule{BirthEffect} end
+const clone = Clone()
+struct Die <: Rule{DeathEffect} end
+const die = Die()
+
 
 function sync!(queue::PriorityQueue, rule::Move)
     enqueue!(queue, rule, 1)
@@ -90,7 +89,7 @@ function sync!(queue::PriorityQueue, ::Stepback)
     return nothing
 end
 
-function sync!(queue::PriorityQueue, rule::Interaction, a::Int64, b)
+function sync!(queue::PriorityQueue, rule::Die, a::Int64, b)
     empty!(queue)
     enqueue!(queue, rule, 0)
     return nothing
@@ -101,49 +100,45 @@ function resolve(queues::Vector, st::GameState) # maybe game-specific
     n_agents = length(queues)
 
     # change death and birth queue
-    d_queue = Dict{Lens, Function}() # lens(), transform()
-    b_queue = Dict{Lens, Function}()
-    c_queue = Dict{Lens, Function}() 
+    cq = Dict{Lens, Function}() 
+    bq = Dict{Lens, Function}()
+    dq = Dict{Lens, Function}()
 
     for i = 1:n_agents
         for (r, p) in queues[i]
-            @show lr = lens(r)
-            @show tr = transform(r)
-
-            # sort r into a queue
-            if r == die
-                push!(d_queue, lr => tr)
-            elseif r == clone
-                push!(b_queue, lr => tr)
-            end
-            # check if lens r exist in queue
-            if !haskey(c_queue, lr)
-                push!(c_queue, lr => tr)
-            else
-                continue
-            end
+            pushtoqueue(r, cq, bq, dq)
         end
     end
 
-    if isempty(c_queue)
+    if isempty(cq) && isempty(bq) && isempty(dq)
         return st
     end
 
-    batch_lens = reduce(++, keys(c_queue))
+    batch_lens = reduce(++, keys(cq))
     @show targs = getall(st, batch_lens) # returns selected parts of st
-    @show tvals = values(c_queue)
-
-    # apply tr to targs
-    #= for i in 1:length(targs)
-        val = tvals[i]
-        arg = targs[i]
-        val(arg)
-    end =#
+    @show tvals = values(cq)
     @show treturn = collect(map((f, arg) -> f(arg), tvals, targs))
     
     st = setall(st, batch_lens, treturn)
 end
 
+function pushtoqueue(r::Rule{ChangeEffect}, cq::Dict, ::Dict, dq::Dict)
+    lr = lens(r)
+    tr = transform(r)
+    push!(cq, lr => tr)
+end
+
+function pushqueue(r::Rule{BirthEffect}, ::Dict, bq::Dict, ::Dict)
+    lr = lens(r)
+    tr = transform(r)
+    push!(bq, lr => tr)
+end
+
+function pushqueue(r::Rule{DeathEffect}, ::Dict, ::Dict, dq::Dict)
+    lr = lens(r)
+    tr = transform(r)
+    push!(dq, lr => tr)
+end
 
 const IPair = Pair{Any, Any}
 # const Interaction = Pair{IPair, Function} 

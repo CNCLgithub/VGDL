@@ -12,18 +12,18 @@ export Game, BG,
         Element, ground, obstacle, pinecone,
         Agent, Player, Butterfly,
         greedy_policy,
-        Rule,
+        Rule, Effect, ChangeEffect, DeathEffect, BirthEffect, 
         update_step
 
 
 # define the main interface
 abstract type Game end
 struct BG <: Game end # TODO: rename
-abstract type Rule{T} end
 abstract type Effect end
 abstract type ChangeEffect <: Effect end
-abstract type DeathEffect <: Effect end
 abstract type BirthEffect <: Effect end
+abstract type DeathEffect <: Effect end
+abstract type Rule{T<:Effect} end
 abstract type Observation end
 struct PosObs <: Observation
     data::SVector{2, Int32}
@@ -106,7 +106,7 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
     for i = 1:l_agents
         agent = state.agents[i]
         obs = observe(agent, i, state, kdtree)
-        action = plan(agent, obs)
+        action = plan(agent, i, obs)
         sync!(queues[i], action)
     end
     
@@ -219,13 +219,15 @@ function plan(::GreedyPolicy, agent::Player, agent_index::Int, obs::PosObs)
     Applicator(direction, get_agent(agent_index))
 end
 
-function plan(::GreedyPolicy, agent::Agent, ::Int, ::NoObservation)
-    rand(actionspace(agent))
+function plan(::GreedyPolicy, agent::Agent, agent_index::Int, ::NoObservation)
+    direction = rand(actionspace(agent))
+    Applicator(direction, get_agent(agent_index))
 end
 
-# we can have different policies for different units in the game
-# here is an "dummy" example, that just picks a random action
-plan(policy::RandomPolicy, agent::Agent, ::Int, ::Observation) = rand(actionspace(agent))
+function plan(::RandomPolicy, agent::Agent, agent_index::Int, ::Observation)
+    direction = rand(actionspace(agent))
+    Applicator(direction, get_agent(agent_index))
+end
 
 include("scene.jl")
 end
