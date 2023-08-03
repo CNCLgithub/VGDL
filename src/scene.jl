@@ -1,4 +1,3 @@
-using ButterflyGame
 using Random
 using Colors, Images
 using Interpolations

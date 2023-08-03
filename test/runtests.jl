@@ -1,6 +1,6 @@
 using Test
 using StaticArrays
-using ButterflyGame
+using VGDL
 
 
 const level_zero = "wwwwwwwwwwwwwwwwwwwwwwwwwwww

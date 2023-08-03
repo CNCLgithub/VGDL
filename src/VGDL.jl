@@ -1,4 +1,5 @@
-module ButterflyGame
+module VGDL
+
 using Accessors
 using Setfield
 using NearestNeighbors
@@ -18,17 +19,23 @@ export Game, BG,
 
 # define the main interface
 abstract type Game end
+
 struct BG <: Game end # TODO: rename
+
 abstract type Effect end
 abstract type ChangeEffect <: Effect end
 abstract type BirthEffect <: Effect end
 abstract type DeathEffect <: Effect end
+abstract type CompositeEffect <: Effect end
+
 abstract type Rule{T<:Effect} end
+
 abstract type Observation end
 struct PosObs <: Observation
     data::SVector{2, Int32}
 end
 struct NoObservation <: Observation end
+
 abstract type Element end
 abstract type StaticElement <: Element end
 abstract type DynamicElement <: Element end
@@ -96,6 +103,7 @@ policy(agent::Player) = agent.policy
 get_element(::Matrix, sv::SVector{2, Int64}) = IndexLens(sv[1], sv[2])
 
 
+include("mutating_lens.jl")
 include("interaction.jl")
 
 function update_step(state::GameState, imap::InteractionMap)::GameState
@@ -164,7 +172,7 @@ function lookahead(agents::Vector{Agent}, queues::Vector)
     return positions
 end
 
-function collisions(kdtree, agent_pos, radius::Float, agent_index::Int) 
+function collisions(kdtree, agent_pos, radius::Float64, agent_index::Int64)
     # is anything present at this location?
     idxs = inrange(kdtree, agent_pos, radius) # length < 1
     colliders = filter(x -> x != agent_index, idxs)

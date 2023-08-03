@@ -1,6 +1,6 @@
-name = "ButterflyGame"
+name = "VGDL"
 uuid = "fbde0925-1a9d-4c55-ae32-aecd5800bfa4"
-authors = ["Yoyo Zhang"]
+authors = ["Yoyo Zhang", "Mario Belledonne"]
 version = "1.0.0-DEV"
 
 [deps]
