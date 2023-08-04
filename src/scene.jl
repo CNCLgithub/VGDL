@@ -100,7 +100,8 @@ const blue_color = RGB{Float32}(0, 0, 1)
 color(::Player) = blue_color
 
 
-function render_image(state::GameState, path::String)
+function render_image(state::GameState, path::String;
+                      img_res::Tuple{Int64, Int64} = (100,100))
     # StaticElements
     scene = state.scene
     bounds = scene.bounds
@@ -118,6 +119,6 @@ function render_image(state::GameState, path::String)
     end
 
     # save & open image
-    img = imresize(img, (100, 100))
+    img = repeat(img, inner = img_res)
     save(path, img)
 end
