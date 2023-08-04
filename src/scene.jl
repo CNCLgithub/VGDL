@@ -1,12 +1,21 @@
 using Random
 using Colors, Images
 using Interpolations
-using Gen
-using Accessors
 
-export random_scene, 
-        generate_map,
-        render_image
+export GridScene,
+    random_scene,
+    generate_map,
+    render_image
+
+mutable struct GridScene <: Scene
+    bounds::Tuple{Int, Int}
+    items::Matrix{StaticElement}
+end
+GridScene(bounds) = GridScene(bounds, fill(ground, bounds))
+
+Base.length(::Element) = 1
+Base.iterate(e::Element) = (e, nothing)
+Base.iterate(e::Element, ::Any) = nothing
 
 function random_scene(bounds::Tuple, density::Float64, npinecones::Int)::GridScene
     m = Matrix{StaticElement}(fill(ground, bounds)) 
@@ -27,17 +36,10 @@ function random_scene(bounds::Tuple, density::Float64, npinecones::Int)::GridSce
         m[pine_map[i]] = pinecone
     end
     # borders last
-    col = bounds[1]
-    row = bounds[2]
-    len = length(m)
-    last = len - col
-    @inbounds for i = eachindex(m)
-        remcol = i % col
-        remcol == 0 && (m[i] = obstacle)
-        remcol == 1 && (m[i] = obstacle)
-        1 <= i <= col && (m[i] = obstacle)
-        last <= i <= len && (m[i] = obstacle)
-    end
+    m[1:end, 1] .= obstacle
+    m[1:end, end] .= obstacle
+    m[1, 1:end] .= obstacle
+    m[end, 1:end] .= obstacle
 
     scene = GridScene(bounds, m)
 
@@ -46,59 +48,6 @@ function random_scene(bounds::Tuple, density::Float64, npinecones::Int)::GridSce
     return scene
 end
 
-
-function generate_map(::BG, setup::String)::GameState
-    h = count(==('\n'), setup) + 1
-    w = 0
-    for char in setup
-        if char == '\n'
-            break
-        end
-        w += 1
-    end
-    scene = GridScene((h, w))
-    m = scene.items
-    V = SVector{2, Int64}
-    p_pos = Vector{V}()
-    b_pos = Vector{V}()
-    
-    # StaticElements
-    setup = replace(setup, r"\n" => "")
-    setup = reshape(collect(setup), (w,h))
-    setup = permutedims(setup, (2,1))
-
-    for (index, char) in enumerate(setup)
-        if char == 'w'
-            m[index] = obstacle
-        elseif char == '.'
-            m[index] = ground
-        elseif char == '0'
-            m[index] = pinecone
-        else
-            ci = CartesianIndices(m)[index]
-            if char == '1'
-                push!(b_pos, ci)
-            else
-                push!(p_pos, ci)
-            end
-        end
-    end
-
-    # DynamicElements
-    state = GameState(scene)
-    agents = state.agents
-    for pos in p_pos
-        typeof(pos)
-        p = Player(pos)
-        push!(agents, p)
-    end
-    for pos in b_pos
-        b = Butterfly(pos)
-        push!(agents, b)
-    end
-
-    return(state)
-end
 
 
 #= function spawn_agents(scene::GridScene)
@@ -164,13 +113,11 @@ function render_image(state::GameState, path::String)
     agents = state.agents
     for i in eachindex(agents)
         agent = agents[i]
-        @show position = agent.position
-        lens = get_element(img, position)     
-        img = Accessors.set(img, lens, color(agent))
+        ci = CartesianIndex(agent.position)
+        img[ci] = color(agent)
     end
 
     # save & open image
-    img = imresize(img, ratio = 10) # TODO: fix
+    img = imresize(img, (100, 100))
     save(path, img)
-    #run(`open $path`)
 end

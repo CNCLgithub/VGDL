@@ -1,5 +1,6 @@
 using Accessors
-using Accessors: IndexLens, PropertyLens, ComposedOptic
+using Accessors: IndexLens, PropertyLens, ComposedOptic,
+    set, delete, insert
 
 export Lens!
 
@@ -30,8 +31,18 @@ function Accessors.delete(o::AbstractDict, l::Lens!{<:IndexLens})
     o
 end
 
+function Accessors.delete(o, l::Lens!{<: ComposedOptic})
+    o_inner = l.pure.inner(o)
+    delete(o_inner, Lens!(l.pure.outer))
+end
+
 function Accessors.insert(o::AbstractDict, l::Lens!{<:IndexLens}, val)
     i = only(l.pure.indices)
     o[i] = val
     o
+end
+
+function Accessors.insert(o, l::Lens!{<: ComposedOptic}, val)
+    o_inner = l.pure.inner(o)
+    insert(o_inner, Lens!(l.pure.outer), val)
 end
