@@ -21,8 +21,6 @@ w...w
 w...w
 wwwww"
 
-Base.convert(ci::CartesianIndex{2}, ::SVector{2, Int64}) = SVector{2, Int64}(ci[1], ci[2])
-
 function initial()
     scene = random_scene((30, 30), 0.25, 40)
     state = GameState(scene)
@@ -30,7 +28,7 @@ function initial()
 end
 
 function collision_test(level::String)
-    g = BG()
+    g = ButterflyGame()
     state = generate_map(g, level)
     agents = state.agents
 
@@ -49,21 +47,23 @@ function collision_test(level::String)
 end
 
 function test_two()
-    g = BG()
-    scene = random_scene((20,20), 0., 0)
+    g = ButterflyGame()
+    scene = random_scene((10,10), 0., 0)
     state = GameState(scene)
-    agents = state.agents
 
-    p = Player([2,2])
-    push!(agents, p)
-    #=b = Butterfly([3,3])
-    push!(agents, b)=#
+    p = Player(; position = [2,2])
+    state.agents[1] = p
+    b = Butterfly(; position = [5,5])
+    state.agents[2] = b
 
     imap = compile_interaction_set(g)
+    display(imap)
 
+    @show state.agents[1].position
     for i in 1:10
         state = update_step(state, imap)
-        render_image(state, "downloads/$(i).png")
+        @show state.agents[1].position
+        render_image(state, "output/$(i).png")
     end
 end
 
