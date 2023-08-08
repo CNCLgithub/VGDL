@@ -42,39 +42,8 @@ function random_scene(bounds::Tuple, density::Float64, npinecones::Int)::GridSce
     m[end, 1:end] .= obstacle
 
     scene = GridScene(bounds, m)
-
-    # agents
-    # scene = spawn_agents(GridScene(bounds, m))
     return scene
 end
-
-
-
-#= function spawn_agents(scene::GridScene)
-    m = scene.items
-
-    # butterflies: Poisson distribution
-    s = length(m)
-    density = ceil(s/25)
-    n = poisson(density)
-    b_map = []
-    @inbounds for i = eachindex(m)
-        if m[i] == ground
-            push!(b_map, i)
-        end
-    end
-    shuffle!(b_map)
-    @inbounds for i = 1:n
-        m[b_map[i]] = butterfly
-    end
-
-    # player
-    i = rand(m)
-    while m[i] != ground
-        i = rand(m)
-    end
-    m[i] = player
-end =#
 
 
 """

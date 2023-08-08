@@ -13,7 +13,7 @@ export NoAction,
 struct NoAction <: Rule{NoEffect, Many} end
 promise(::Type{NoAction}) = (i, o) -> NoAction()
 # Don't need to change the queue
-add!(q::PriorityQueue, r::NoAction) = nothing
+add!(::PriorityQueue, ::NoAction) = nothing
 
 abstract type  Move <: Rule{ChangeEffect, Many} end
 
@@ -58,7 +58,7 @@ end
 lens(r::Stepback) = _move_lens(r.ref)
 transform(r::Stepback) = x -> x # REVIEW: feels weird
 promise(::Type{Stepback}) = (i, o) -> Stepback(i)
-add!(q::PriorityQueue, r::Stepback) = nothing
+add!(::PriorityQueue, ::Stepback) = nothing
 
 "Removes a single move rule"
 function modify!(q::PriorityQueue, ::Stepback)

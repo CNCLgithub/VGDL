@@ -68,13 +68,16 @@ function promise end
 "Priority of a rule (Int)"
 function priority end
 
+
 #################################################################################
 # Element types
 #################################################################################
+
 abstract type Element end
 abstract type StaticElement <: Element end
 abstract type DynamicElement <: Element end
 abstract type Agent <: DynamicElement end
+
 
 #################################################################################
 # Scene and state

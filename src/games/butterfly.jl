@@ -1,5 +1,6 @@
 export ButterflyGame,
-    generate_map
+    generate_map, 
+    spawn_agents
 
 "A game with butterflies =)"
 struct ButterflyGame <: Game end
@@ -16,7 +17,11 @@ function interaction_set(::ButterflyGame)
     ]
 end
 
+"""
+    generate_map(game, setup)
 
+Initialize state based on symbol map.
+"""
 function generate_map(::ButterflyGame, setup::String)::GameState
     h = count(==('\n'), setup) + 1
     w = 0
@@ -56,7 +61,6 @@ function generate_map(::ButterflyGame, setup::String)::GameState
 
     # DynamicElements
     state = GameState(scene)
-    agents = state.agents
     for pos in p_pos
         typeof(pos)
         p = Player(pos)
@@ -70,4 +74,39 @@ function generate_map(::ButterflyGame, setup::String)::GameState
     end
 
     return(state)
+end
+
+
+"""
+    spawn_agents(state, n_players)
+
+Adds agents to state at random locations.
+"""
+function spawn_agents(state::GameState, n_players::Int64 = 1)
+    # butterfly first (Poisson distribution)
+    items = state.scene.items
+    size = length(items)
+    density = ceil(size/20)
+    n_b = poisson(density)
+    pot_pos = []
+    @inbounds  for i in eachindex(items)
+        if m[i] == ground
+            push!(pot_pos, i)
+        end
+    end
+    shuffle!(pot_pos)
+    @inbounds for i = 1:n_b
+        pos = pot_pos[i]
+        b = Butterfly(pos)
+        l = new_index(state)
+        insert(state, l, b)
+    end
+
+    # player second
+    for i = 1:n_players
+        pos = pot_pos[n_b + i]
+        p = Player(pos)
+        l = new_index(state)
+        insert(state, l, p)
+    end
 end

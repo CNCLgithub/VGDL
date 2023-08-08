@@ -82,7 +82,6 @@ function sync!(queue::PriorityQueue, rule::Rule)
 end
 
 
-
 # REVIEW: Might want to allow for game specific implementations
 """
     resolve(queues, state)
@@ -220,7 +219,6 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
         # Check the agent's position on the gridscene
         cs = collisions(kdtree, i, 1.0)
         # Update
-        agent_type = typeof(agent)
         for ci in cs
             cindex = ks[ci]
             collider = state.agents[cindex]

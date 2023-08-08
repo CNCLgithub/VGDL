@@ -8,7 +8,7 @@ Base.convert(::Type{CartesianIndex{2}}, x::SVector{2, Int64}) =
 function collisions(kd::KDTree, index::Int64, radius::Float64)
     pos = kd.data[index]
     # is anything present at this location?
-    idxs = inrange(kd, pos, radius) # length < 1
+    idxs = inrange(kd, pos, radius)
     colliders = filter(x -> x != index, idxs)
     return colliders
 end
