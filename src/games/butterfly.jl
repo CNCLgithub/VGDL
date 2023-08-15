@@ -11,9 +11,8 @@ function interaction_set(::ButterflyGame)
         (Butterfly => Obstacle) => Stepback,
         (Butterfly => Player) => KilledBy,
         (Butterfly => Player) => ChangeScore,
-        # (Butterfly => Pinecone) => kill,
-        # (Butterfly => Pinecone) => clone,
-        # (Pinecone => Butterfly) => die,
+        (Butterfly => Pinecone) => Retile{Ground},
+        (Butterfly => Pinecone) => Clone,
     ]
 end
 

@@ -151,8 +151,8 @@ end
 
 function plan(::GreedyPolicy, agent::Player, agent_index::Int, obs::PosObs)
     # moves toward the nearest butterfly
-    dx, dy = agent.position - obs.data
-    direction = if abs(dx) < abs(dy)
+    dy, dx = agent.position - obs.data
+    direction = if abs(dx) > abs(dy)
         dx > 0 ? Left : Right
     else
         dy > 0 ? Up : Down

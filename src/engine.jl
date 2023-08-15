@@ -91,7 +91,8 @@ then resolves the next game state.
 """
 function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
                  st::GameState)
-    n_agents = length(queues)
+    #n_agents = length(queues)
+    ks = collect(keys(st.agents))
 
     # change death and birth queue
     cq = Dict{Any, Function}()
@@ -99,7 +100,8 @@ function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
     dq = Dict{Any, Function}()
 
     # move rules from agent queues to c,b,d queues
-    for i = 1:n_agents
+    for i = ks
+        @show i
         for (r, p) in queues[i]
             pushtoqueue!(r, cq, bq, dq)
         end
@@ -169,7 +171,7 @@ function pushtoqueue!(r::Rule{<:Effect, Many},
     q = selectqueue(r, c, b, d)
     lr = lens(r)
     tr = transform(r)
-    q[lr] = tr
+    q[lr] = haskey(q, lr) ? opcompose(q[lr], tr) : tr
     return true
 end
 
@@ -183,12 +185,13 @@ end
 Produces the next game state.
 """
 function update_step(state::GameState, imap::InteractionMap)::GameState
-    ks = collect(keys(state.agents))
+    @show ks = collect(keys(state.agents))
     # REVIEW: this is gross
     queues = OrderedDict{Int64, PriorityQueue}(
         [i => PriorityQueue{Rule, Int64}() for i in ks]
     )
-    kdtree = KDTree(lookahead(state.agents))
+    og_positions = lookahead(state.agents)
+    kdtree = KDTree(og_positions)
     # action phase
     for i = ks
         agent = state.agents[i]
@@ -197,11 +200,11 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
         sync!(queues[i], action)
     end
     # static interaction phase
-    positions = lookahead(state.agents, queues)
+    new_positions = lookahead(state.agents, queues)
     for i = eachindex(ks)
         agent_id = ks[i]
         agent = state.agents[agent_id]
-        pot_pos = positions[i]
+        pot_pos = new_positions[i]
         # could be a `Ground` | `Obstacle` | `Pinecone`
         elem = state.scene.items[CartesianIndex(pot_pos)]
         key = typeof(agent) => typeof(elem)
@@ -210,26 +213,26 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
         sync!(queues[agent_id], rule)
     end
     # dynamic interaction phase
-    positions = lookahead(state.agents, queues)
-    kdtree = KDTree(positions)
+    # TODO: fix
+    full_positions = 
+        [SVector(og_positions[i], new_positions[i]) for i in 1:length(og_positions)] 
+    bt = KDTree(full_positions, Intersection())
     for i = eachindex(ks)
         agent_id = ks[i]
         agent = state.agents[agent_id]
-        pot_pos = positions[i]
         # Check the agent's position on the gridscene
-        cs = collisions(kdtree, i, 1.0)
+        cs = collisions(bt, i, 0)
         # Update
         for ci in cs
             cindex = ks[ci]
             collider = state.agents[cindex]
-            key = typeof(agent) => typeof(collider)
+            @show key = typeof(agent) => typeof(collider)
             haskey(imap, key) || continue
             rule = imap[key](agent_id, cindex)
             sync!(queues[agent_id], rule)
         end
     end
 
-    # resolve the queue
     state = resolve(queues, state)
 end
 

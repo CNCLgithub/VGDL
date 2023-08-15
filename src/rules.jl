@@ -5,6 +5,7 @@ export NoAction,
     Right,
     Stepback,
     KilledBy,
+    Retile,
     Clone,
     ChangeScore,
     CompositeRule
@@ -89,7 +90,7 @@ struct Clone <: Rule{BirthEffect, Many}
         l = get_agent(ref)
         new(ref, l)
     end
-end
+end                                     
 lens(r::Clone) = r.lens
 transform(r::Clone) = deepcopy
 promise(::Type{Clone}) = (i, o) -> Clone(i)
@@ -99,9 +100,6 @@ struct KilledBy <: Rule{DeathEffect, Single}
     killer
     function KilledBy(ref::Int64, killer::Int64)
         new(get_agent(ref), get_agent(killer))
-    end
-    function KilledBy(ref::Int64, killer)
-        new(get_agent(ref), get_static(killer))
     end
 end
 lens(r::KilledBy) = r.ref
@@ -125,6 +123,17 @@ function pushtoqueue!(r::KilledBy, c::Dict, b::Dict, d::Dict)
     d[lr] = tr
     return true
 end
+
+struct Retile{T <: StaticElement} <: Rule{ChangeEffect, Many}
+    ref::CartesianIndex{2}
+    function Retile{T}(i, o) where {T}
+        new{T}(o)
+    end
+end
+lens(r::Retile) = get_static(r.ref)
+transform(::Retile{T}) where {T} = _ -> T()
+promise(::Type{Retile{T}}) where {T} = (i, o) -> Retile{T}(i, o)
+priority(::Retile) = 5
 
 struct ChangeScore <: Rule{ChangeEffect, Many} end
 lens(::ChangeScore) = @optic _.reward

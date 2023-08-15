@@ -17,29 +17,28 @@ Base.length(::Element) = 1
 Base.iterate(e::Element) = (e, nothing)
 Base.iterate(e::Element, ::Any) = nothing
 
-function random_scene(bounds::Tuple, density::Float64, npinecones::Int)::GridScene
+function random_scene(bounds::Tuple, o_density::Float64, npinecones::Int64)::GridScene
     m = Matrix{StaticElement}(fill(ground, bounds)) 
 
     # obstacles first
-    @inbounds for i = eachindex(m)
-        rand() < density && (m[i] = obstacle)
-    end
-    # pinecones second
-    pine_map = []
-    @inbounds for i = eachindex(m)
-        if m[i] == ground
-            push!(pine_map, i)
+    if o_density > 0
+        @inbounds for i = eachindex(m)
+            rand() < o_density && (m[i] = obstacle)
         end
     end
-    shuffle!(pine_map)
-    @inbounds for i = 1:npinecones
-        m[pine_map[i]] = pinecone
-    end
-    # borders last
+    # borders second
     m[1:end, 1] .= obstacle
     m[1:end, end] .= obstacle
     m[1, 1:end] .= obstacle
     m[end, 1:end] .= obstacle
+    # pinecones last
+    if npinecones > 0
+        pine_map = findall(m .== ground)
+        shuffle!(pine_map)
+        @inbounds for i = 1:npinecones
+            m[pine_map[i]] = pinecone
+        end
+    end
 
     scene = GridScene(bounds, m)
     return scene
@@ -83,6 +82,7 @@ function render_image(state::GameState, path::String;
     agents = state.agents
     for i in eachindex(agents)
         agent = agents[i]
+        @show typeof(agent), agent.position
         ci = CartesianIndex(agent.position)
         img[ci] = color(agent)
     end

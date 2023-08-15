@@ -48,22 +48,22 @@ end
 
 function test_two()
     g = ButterflyGame()
-    scene = random_scene((10,10), 0., 0)
+    scene = random_scene((10,10), 0., 4)
     state = GameState(scene)
 
     p = Player(; position = [2,2])
     state.agents[1] = p
     b = Butterfly(; position = [5,5])
     state.agents[2] = b
+    b2 = Butterfly(; position = [5,7])
+    state.agents[3] = b2
 
     imap = compile_interaction_set(g)
-    display(imap)
 
-    @show state.agents[1].position
     for i in 1:10
+        println("ROUND$(i)")
         state = update_step(state, imap)
-        @show state.agents[1].position
-        render_image(state, "output/$(i).png")
+        img = render_image(state, "output/$(i).png")
     end
 end
 
@@ -71,3 +71,4 @@ end
 #collision_test(easy)
 #collision_test(level_zero)
 test_two()
+
