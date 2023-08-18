@@ -222,7 +222,6 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
         for ci in cs
             cindex = ks[ci]
             collider = state.agents[cindex]
-
             @show key = typeof(agent) => typeof(collider)
             haskey(imap, key) || continue
             rule = imap[key](agent_id, cindex)

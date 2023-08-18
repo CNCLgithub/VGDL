@@ -38,7 +38,7 @@ function collisions(tree::NNTree, index::Int64, radius::Int64, og_pos::Vector{SV
     filter!(x -> x != index, idxs)
     colliders = []
 
-    for ci in eachindex(idxs)
+    for ci in idxs
         if (og_pos[ci] == new_pos[index]) || (new_pos[ci] == new_pos[index]) || (og_pos[index] == new_pos[ci])
             push!(colliders, ci)
         end
