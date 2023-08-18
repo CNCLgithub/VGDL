@@ -217,15 +217,12 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
         agent_id = ks[i]
         agent = state.agents[agent_id]
         # Check the agent's position on the gridscene
-        cs = collisions(kdtree, i, 1)
+        cs = collisions(kdtree, i, 1, og_pos)
         # Update
         for ci in cs
             cindex = ks[ci]
             collider = state.agents[cindex]
-            if (og_pos[ci] != new_pos[i]) && (new_pos[ci] != new_pos[i]) && (og_pos[i] != new_pos[ci])
-                continue
-            end
-            @show og_pos[ci], og_pos[i], new_pos[ci], new_pos[i]
+
             @show key = typeof(agent) => typeof(collider)
             haskey(imap, key) || continue
             rule = imap[key](agent_id, cindex)

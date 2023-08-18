@@ -29,11 +29,21 @@ const Line = Vector{SVector{2, Int64}}
     min(cityblock(a[1], b[1]), cityblock(a[1], b[2]), cityblock(a[2], b[1]), cityblock(a[2], b[2]))
  =#
 
-function collisions(tree::NNTree, index::Int64, radius::Int64)
+function collisions(tree::NNTree, index::Int64, radius::Int64, og_pos::Vector{SVector{2, Int64}})
     pos = tree.data[index]
+    new_pos = tree.data
+
     # is anything present at this location?
     idxs = inrange(tree, pos, radius)
-    colliders = filter(x -> x != index, idxs)
+    filter!(x -> x != index, idxs)
+    colliders = []
+
+    for ci in eachindex(idxs)
+        if (og_pos[ci] == new_pos[index]) || (new_pos[ci] == new_pos[index]) || (og_pos[index] == new_pos[ci])
+            push!(colliders, ci)
+        end
+    end
+
     return colliders
 end
 
