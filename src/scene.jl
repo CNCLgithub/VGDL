@@ -1,6 +1,5 @@
 using Random
 using Colors, Images
-using Interpolations
 
 export GridScene,
     random_scene,

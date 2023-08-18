@@ -136,15 +136,14 @@ function observe(agent::Player, agent_index::Int, state::GameState, kdtree::KDTr
         return NoObservation()
     end
 
-    #TODO: ensure returns in order
+    # get nearest two agents
     bounds = state.scene.bounds
     a, b = bounds
     r = max(a, b)
-    cs = collisions(kdtree, agent_index, r)
-    ci = cs[1]
+    idxs, dist = knn(kdtree, agent.position, 2, true)
 
     # returns the location of the nearest butterfly
-    position = kdtree.data[ci]
+    position = kdtree.data[idxs[2]]
     return PosObs(position)
 end
 

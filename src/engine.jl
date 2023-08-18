@@ -101,7 +101,6 @@ function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
 
     # move rules from agent queues to c,b,d queues
     for i = ks
-        @show i
         for (r, p) in queues[i]
             pushtoqueue!(r, cq, bq, dq)
         end
@@ -190,8 +189,8 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
     queues = OrderedDict{Int64, PriorityQueue}(
         [i => PriorityQueue{Rule, Int64}() for i in ks]
     )
-    og_positions = lookahead(state.agents)
-    kdtree = KDTree(og_positions)
+    og_pos = lookahead(state.agents)
+    kdtree = KDTree(og_pos, cityblock)
     # action phase
     for i = ks
         agent = state.agents[i]
@@ -200,11 +199,11 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
         sync!(queues[i], action)
     end
     # static interaction phase
-    new_positions = lookahead(state.agents, queues)
+    new_pos = lookahead(state.agents, queues)
     for i = eachindex(ks)
         agent_id = ks[i]
         agent = state.agents[agent_id]
-        pot_pos = new_positions[i]
+        pot_pos = new_pos[i]
         # could be a `Ground` | `Obstacle` | `Pinecone`
         elem = state.scene.items[CartesianIndex(pot_pos)]
         key = typeof(agent) => typeof(elem)
@@ -213,19 +212,20 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
         sync!(queues[agent_id], rule)
     end
     # dynamic interaction phase
-    # TODO: fix
-    full_positions = 
-        [SVector(og_positions[i], new_positions[i]) for i in 1:length(og_positions)] 
-    bt = KDTree(full_positions, Intersection())
+    kdtree = KDTree(new_pos, cityblock)
     for i = eachindex(ks)
         agent_id = ks[i]
         agent = state.agents[agent_id]
         # Check the agent's position on the gridscene
-        cs = collisions(bt, i, 0)
+        cs = collisions(kdtree, i, 1)
         # Update
         for ci in cs
             cindex = ks[ci]
             collider = state.agents[cindex]
+            if (og_pos[ci] != new_pos[i]) && (new_pos[ci] != new_pos[i]) && (og_pos[i] != new_pos[ci])
+                continue
+            end
+            @show og_pos[ci], og_pos[i], new_pos[ci], new_pos[i]
             @show key = typeof(agent) => typeof(collider)
             haskey(imap, key) || continue
             rule = imap[key](agent_id, cindex)
