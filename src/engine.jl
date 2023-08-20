@@ -117,9 +117,9 @@ function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
 
     # births next
     for (l, f) in bq
-        val = f(l(st))
-        mut_lens = new_index(new_state)
-        Accessors.insert(new_state, mut_lens, val)
+        @show val = f(l(st))
+        @show mut_lens = new_index(new_state)
+        @show Accessors.insert(new_state, mut_lens, val)
     end
 
     # deaths last
@@ -149,8 +149,8 @@ Adds `r` to the proper change, birth, or death queue.
 function pushtoqueue! end
 
 "Has no effect..."
-function pushtoqueue!(r::Rule{<:NoEffect, <:Application},
-                      c::AbstractDict, b::AbstractDict, d::AbstractDict)
+function pushtoqueue!(::Rule{<:NoEffect, <:Application},
+                      ::AbstractDict, ::AbstractDict, ::AbstractDict)
     return true
 end
 
@@ -195,11 +195,11 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
     for i = ks
         agent = state.agents[i]
         obs = observe(agent, i, state, kdtree)
-        action = plan(agent, i, obs)
+        @show action = plan(agent, i, obs)
         sync!(queues[i], action)
     end
     # static interaction phase
-    new_pos = lookahead(state.agents, queues)
+    @show new_pos = lookahead(state.agents, queues)
     for i = eachindex(ks)
         agent_id = ks[i]
         agent = state.agents[agent_id]
@@ -208,7 +208,7 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
         elem = state.scene.items[CartesianIndex(pot_pos)]
         key = typeof(agent) => typeof(elem)
         haskey(imap, key) || continue
-        rule = imap[key](agent_id, pot_pos)
+        @show rule = imap[key](agent_id, pot_pos)
         sync!(queues[agent_id], rule)
     end
     # dynamic interaction phase
@@ -222,7 +222,7 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
         for ci in cs
             cindex = ks[ci]
             collider = state.agents[cindex]
-            @show key = typeof(agent) => typeof(collider)
+            key = typeof(agent) => typeof(collider)
             haskey(imap, key) || continue
             rule = imap[key](agent_id, cindex)
             sync!(queues[agent_id], rule)
@@ -259,6 +259,7 @@ function lookahead(agents::OrderedDict{Int64,Agent},
 end
 
 function new_index(st::GameState)
-    l = get_agent(length(st.agents) + 1)
+    key = last(collect(keys(st.agents)))
+    l = get_agent(key + 1)
     Lens!(l)
 end

@@ -51,8 +51,8 @@ function test_two()
     scene = random_scene((10,10), 0., 4)
     state = GameState(scene)
 
-    p = Player(; position = [2,2])
-    state.agents[1] = p
+    #p = Player(; position = [2,2])
+    #state.agents[1] = p
     b = Butterfly(; position = [5,5])
     state.agents[2] = b
     b2 = Butterfly(; position = [5,7])
@@ -61,7 +61,7 @@ function test_two()
     imap = compile_interaction_set(g)
 
     for i in 1:10
-        println("ROUND$(i)")
+        println("\nROUND$(i)")
         state = update_step(state, imap)
         img = render_image(state, "output/$(i).png")
     end

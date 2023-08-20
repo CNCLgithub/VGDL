@@ -6,7 +6,6 @@ export NoAction,
     Stepback,
     KilledBy,
     Retile,
-    Clone,
     ChangeScore,
     CompositeRule
 
@@ -38,10 +37,10 @@ struct Right <: Move
 end
 lens(r::Move) = r.lens
 priority(::Move) = 1
-transform(r::Up) = x -> x + up
-transform(r::Down) = x -> x + down
-transform(r::Left) = x -> x + left
-transform(r::Right) = x -> x + right
+transform(::Up) = x -> x + up
+transform(::Down) = x -> x + down
+transform(::Left) = x -> x + left
+transform(::Right) = x -> x + right
 promise(::Type{Up}) = (i, o) -> Up(i)
 promise(::Type{Down}) = (i, o) -> Down(i)
 promise(::Type{Left}) = (i, o) -> Left(i)
@@ -114,7 +113,7 @@ function modify!(queue::PriorityQueue, rule::KilledBy)
 end
 
 # used in `resolve`
-function pushtoqueue!(r::KilledBy, c::Dict, b::Dict, d::Dict)
+function pushtoqueue!(r::KilledBy, ::Dict, ::Dict, d::Dict)
     lr = lens(r)
     # contingent on killer staying alive
     # or if the target is already dead

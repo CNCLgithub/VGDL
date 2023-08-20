@@ -81,7 +81,6 @@ function render_image(state::GameState, path::String;
     agents = state.agents
     for i in eachindex(agents)
         agent = agents[i]
-        @show typeof(agent), agent.position
         ci = CartesianIndex(agent.position)
         img[ci] = color(agent)
     end
