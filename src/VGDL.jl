@@ -11,6 +11,7 @@ using NearestNeighbors
 export Game,
     interaction_set,
     Effect, ChangeEffect, DeathEffect, BirthEffect,
+    TerminationEffect, GameOver, GameWon,
     Application, Single, Many,
     Rule, lens, transform, priority, promise,
     GameState,
@@ -38,6 +39,9 @@ abstract type BirthEffect <: Effect end
 abstract type DeathEffect <: Effect end
 abstract type NoEffect <: Effect end
 abstract type CompositeEffect <: Effect end
+abstract type TerminationEffect end
+struct GameOver <: TerminationEffect end
+struct GameWon <: TerminationEffect end
 
 abstract type Application end
 abstract type Single <: Application end

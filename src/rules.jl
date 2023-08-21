@@ -7,7 +7,8 @@ export NoAction,
     KilledBy,
     Retile,
     ChangeScore,
-    CompositeRule
+    CompositeRule,
+    TerminationEffect
 
 
 struct NoAction <: Rule{NoEffect, Many} end
@@ -162,4 +163,13 @@ function modify!(q::PriorityQueue, r::CompositeRule)
 end
 function pushtoqueue!(r::CompositeRule, cq::Dict, bq::Dict, dq::Dict)
     pushtoqueue!(r.a, cq, bq, dq) && pushtoqueue!(r.b, cq, bq, dq)
+end
+
+
+"Termination Set"
+struct TerminationRule # I know its not a normal `Rule`
+    #A function that takes game state and returns `true` if the rule applies
+    predicate::Function
+    #The type of termination effect
+    effect::TerminationEffect
 end

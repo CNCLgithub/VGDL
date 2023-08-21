@@ -31,18 +31,12 @@ function collision_test(level::String)
     g = ButterflyGame()
     state = generate_map(g, level)
     agents = state.agents
-
-    p = Player([2,2])
-    push!(agents, p)
-    #=b = Butterfly([3,3])
-    push!(agents, b)=#
-
-    #render_image(state)
     imap = compile_interaction_set(g)
 
     for i in 1:10
+        println("\nROUND$(i)")
         state = update_step(state, imap)
-        render_image(state, "downloads/$(i).png")
+        img = render_image(state, "output/$(i).png")
     end
 end
 
@@ -51,8 +45,8 @@ function test_two()
     scene = random_scene((10,10), 0., 4)
     state = GameState(scene)
 
-    #p = Player(; position = [2,2])
-    #state.agents[1] = p
+    p = Player(; position = [2,2])
+    state.agents[1] = p
     b = Butterfly(; position = [5,5])
     state.agents[2] = b
     b2 = Butterfly(; position = [5,7])
@@ -69,6 +63,6 @@ end
 
 #initial()
 #collision_test(easy)
-#collision_test(level_zero)
-test_two()
+collision_test(level_zero)
+#test_two()
 

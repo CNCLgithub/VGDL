@@ -16,6 +16,12 @@ function interaction_set(::ButterflyGame)
     ]
 end
 
+function termination_set(::ButterflyGame)
+    set = [
+        
+    ]
+end
+
 """
     generate_map(game, setup)
 
@@ -61,13 +67,12 @@ function generate_map(::ButterflyGame, setup::String)::GameState
     # DynamicElements
     state = GameState(scene)
     for pos in p_pos
-        typeof(pos)
-        p = Player(pos)
+        p = Player(; position = pos)
         l = new_index(state)
         insert(state, l, p)
     end
     for pos in b_pos
-        b = Butterfly(pos)
+        b = Butterfly(; position = pos)
         l = new_index(state)
         insert(state, l, b)
     end

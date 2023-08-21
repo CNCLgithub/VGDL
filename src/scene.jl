@@ -3,7 +3,6 @@ using Colors, Images
 
 export GridScene,
     random_scene,
-    generate_map,
     render_image
 
 mutable struct GridScene <: Scene

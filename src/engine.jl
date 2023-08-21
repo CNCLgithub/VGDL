@@ -259,7 +259,9 @@ function lookahead(agents::OrderedDict{Int64,Agent},
 end
 
 function new_index(st::GameState)
-    key = last(collect(keys(st.agents)))
+    allkeys = collect(keys(st.agents))
+    key = 
+        length(allkeys) == 0 ? 0 : last(allkeys)
     l = get_agent(key + 1)
     Lens!(l)
 end
