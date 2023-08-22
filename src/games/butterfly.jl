@@ -17,9 +17,7 @@ function interaction_set(::ButterflyGame)
 end
 
 function termination_set(::ButterflyGame)
-    set = [
-        
-    ]
+    set = [TimeOut, NoPinecone, NoButterfly]
 end
 
 """

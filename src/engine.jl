@@ -91,7 +91,6 @@ then resolves the next game state.
 """
 function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
                  st::GameState)
-    #n_agents = length(queues)
     ks = collect(keys(st.agents))
 
     # change death and birth queue
@@ -128,6 +127,7 @@ function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
         delete(new_state, mut_lens)
     end
 
+    new_state.time = st.time + 1
     return new_state
 end
 
@@ -183,7 +183,7 @@ end
 
 Produces the next game state.
 """
-function update_step(state::GameState, imap::InteractionMap)::GameState
+function update_step(state::GameState, imap::InteractionMap, tset::Vector{Function})::GameState
     @show ks = collect(keys(state.agents))
     # REVIEW: this is gross
     queues = OrderedDict{Int64, PriorityQueue}(
@@ -228,8 +228,14 @@ function update_step(state::GameState, imap::InteractionMap)::GameState
             sync!(queues[agent_id], rule)
         end
     end
-
     state = resolve(queues, state)
+
+    for r in tset
+        r.predicate(state) && return r.effect
+    end
+
+    render_image(state, "output/$(state.time).png")
+    update_step(state, imap, tset)
 end
 
 

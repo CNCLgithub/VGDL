@@ -11,7 +11,8 @@ using NearestNeighbors
 export Game,
     interaction_set,
     Effect, ChangeEffect, DeathEffect, BirthEffect,
-    TerminationEffect, GameOver, GameWon,
+    termination_set,
+    TerminationEffect,
     Application, Single, Many,
     Rule, lens, transform, priority, promise,
     GameState,
@@ -39,9 +40,6 @@ abstract type BirthEffect <: Effect end
 abstract type DeathEffect <: Effect end
 abstract type NoEffect <: Effect end
 abstract type CompositeEffect <: Effect end
-abstract type TerminationEffect end
-struct GameOver <: TerminationEffect end
-struct GameWon <: TerminationEffect end
 
 abstract type Application end
 abstract type Single <: Application end
@@ -73,6 +71,17 @@ function promise end
 function priority end
 
 
+"""
+    interaction_set(::Game)
+
+Returns the interaction set for a game.
+
+"""
+function termination_set end
+
+"Termination set"
+abstract type TerminationEffect end
+
 #################################################################################
 # Element types
 #################################################################################
@@ -93,8 +102,9 @@ mutable struct GameState
     scene::Scene
     agents::OrderedDict{Int64, Agent}
     reward::Float64
+    time::Int64
 end
-GameState(scene) = GameState(scene, OrderedDict{Int64, Agent}(), 0.0)
+GameState(scene) = GameState(scene, OrderedDict{Int64, Agent}(), 0.0, 0)
 
 include("utils/utils.jl")
 include("rules.jl")

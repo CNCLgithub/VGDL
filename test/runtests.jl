@@ -32,12 +32,8 @@ function collision_test(level::String)
     state = generate_map(g, level)
     agents = state.agents
     imap = compile_interaction_set(g)
-
-    for i in 1:10
-        println("\nROUND$(i)")
-        state = update_step(state, imap)
-        img = render_image(state, "output/$(i).png")
-    end
+    tset = termination_set(g)
+    state = update_step(state, imap, tset)
 end
 
 function test_two()
@@ -55,9 +51,9 @@ function test_two()
     imap = compile_interaction_set(g)
 
     for i in 1:10
-        println("\nROUND$(i)")
+       # println("\nROUND$(i)")
         state = update_step(state, imap)
-        img = render_image(state, "output/$(i).png")
+        #img = render_image(state, "output/$(i).png")
     end
 end
 
