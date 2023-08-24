@@ -1,9 +1,10 @@
 using Test
 using StaticArrays
 using VGDL
+using VideoIO
 
 
-const level_zero = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
+const l0 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
 w..1.....1..w...0.0.0.0w000w
 w.1....................w000w
 w...1...0.....A........w000w
@@ -15,25 +16,60 @@ wwwww................w.....w
 w........0.0.0.0.0...w0...0w
 wwwwwwwwwwwwwwwwwwwwwwwwwwww"
 
-const easy = "wwwww
-w...w
-w...w
-w...w
-wwwww"
+const l1 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
+w..w0w........0........w0w.w
+w..........................w
+w...1...w...1.....www.....1w
+w.....1.w....1.1...1.......w
+w0.......w................0w
+w.........1...wwww...1.....w
+w....1........w.1......1...w
+w.........A................w
+w..w0w........0........w0w.w
+wwwwwwwwwwwwwwwwwwwwwwwwwwww"
 
-function initial()
+const l2 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
+w..............1.........0.w
+w..0000........1..........0w
+w...00......1..1..www......w
+w..w......1................w
+w00w...1wwwwww1ww......A...w
+w..w......1................w
+w...00......1..1..www......w
+w..0000........1..........0w
+w..............1.........0.w
+wwwwwwwwwwwwwwwwwwwwwwwwwwww"
+
+const l3 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
+w00w.......................w
+w00w.................1.....w
+w00w......1................w
+w.ww..........1....1...1...w
+w......0..............1....w
+w...........1..........1...w
+w............0....1.1......w
+w......................wwwww
+w.....A..................00w
+wwwwwwwwwwwwwwwwwwwwwwwwwwww"
+
+const l4 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
+w.........A................w
+w..........................w
+w..........................w
+w..........................w
+wwwwwwwwwwwww.wwwwwwwwwwwwww
+w.......................w..w
+w.....1...1.1..1.......w...w
+w.....................w..0.w
+w....1..1..1.........w.0...w
+w...................w..0...w
+wwwwwwwwwwwwwwwwwwwwwwwwwwww"
+
+
+function test_one()
     scene = random_scene((30, 30), 0.25, 40)
     state = GameState(scene)
     render_image(state)
-end
-
-function collision_test(level::String)
-    g = ButterflyGame()
-    state = generate_map(g, level)
-    agents = state.agents
-    imap = compile_interaction_set(g)
-    tset = termination_set(g)
-    state = update_step(state, imap, tset)
 end
 
 function test_two()
@@ -49,16 +85,45 @@ function test_two()
     state.agents[3] = b2
 
     imap = compile_interaction_set(g)
+    tset = termination_set(g)
 
-    for i in 1:10
-       # println("\nROUND$(i)")
-        state = update_step(state, imap)
-        #img = render_image(state, "output/$(i).png")
+    state = update_step(state, imap, tset)
+end
+
+
+function collision_test(level::String)
+    for i in 1:5
+        g = ButterflyGame()
+        state = generate_map(g, level)
+        imap = compile_interaction_set(g)
+        tset = termination_set(g)
+        state = update_step(state, imap, tset)
+        save_video("level4_$(i)")
     end
 end
 
-#initial()
-#collision_test(easy)
-collision_test(level_zero)
+function save_video(filename::String)
+    dir = "output"
+    framestack = readdir(dir)
+    framestack = sort(filter(x -> endswith(x, ".png"), framestack), by = x -> parse(Int, split(x, ".")[1]))
+    
+    firstframevec = VideoIO.load(joinpath(dir, framestack[1]))
+    firstframe = firstframevec[1]
+
+    encoder_options = (crf=23, preset="medium")
+    fps = 10
+    
+    open_video_out("$(filename).mp4", firstframe, framerate=fps, encoder_options=encoder_options) do writer
+        for frame in framestack
+            framevec = VideoIO.load(joinpath(dir, frame))
+            f = framevec[1]
+            write(writer, f)
+        end
+    end
+end
+
+#test_one()
 #test_two()
+collision_test(l4)
+
 

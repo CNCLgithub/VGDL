@@ -88,7 +88,7 @@ struct GreedyPolicy <: Policy end
 const greedy_policy = GreedyPolicy()
 
 function plan(::GreedyPolicy, agent::Agent, agent_index::Int, ::NoObservation)
-    action = rand(actionspace(agent))
+    @show action = rand(actionspace(agent))
     promise(action)(agent_index, 0)# REVIEW: the second argument is not used
 end
 

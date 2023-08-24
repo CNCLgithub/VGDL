@@ -8,10 +8,7 @@ export NoAction,
     Retile,
     ChangeScore,
     CompositeRule,
-    TerminationRule,
-    TimeOut,
-    NoPinecone,
-    NoButterfly
+    TerminationRule
 
 
 struct NoAction <: Rule{NoEffect, Many} end
@@ -177,27 +174,4 @@ struct TerminationRule # I know its not a normal `Rule`
     predicate::Function
     #The type of termination effect
     effect::TerminationEffect
-end
-
-function isTimeOut(state::GameState) 
-    state.time > 50 && return true
-end
-function isNoPinecone(state::GameState) 
-    items = state.scene.items
-    p = findall(items .== pinecone)
-    isempty(p) && return true
-end
-function isNoButterfly(state::GameState) 
-    agents = values(state.agents)
-    b = findall(agents .== butterfly)
-    isempty(b) && return true
-end
-function TimeOut()
-    TerminationRule(isTimeOut, GameOver)
-end
-function NoPinecone()
-    TerminationRule(isNoPinecone, GameOver)
-end
-function NoButterfly()
-    TerminationRule(isNoButterfly, GameWon)
 end

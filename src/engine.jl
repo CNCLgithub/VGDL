@@ -116,9 +116,9 @@ function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
 
     # births next
     for (l, f) in bq
-        @show val = f(l(st))
-        @show mut_lens = new_index(new_state)
-        @show Accessors.insert(new_state, mut_lens, val)
+        val = f(l(st))
+        mut_lens = new_index(new_state)
+        Accessors.insert(new_state, mut_lens, val)
     end
 
     # deaths last
@@ -183,8 +183,8 @@ end
 
 Produces the next game state.
 """
-function update_step(state::GameState, imap::InteractionMap, tset::Vector{Function})::GameState
-    @show ks = collect(keys(state.agents))
+function update_step(state::GameState, imap::InteractionMap, tset::Vector{TerminationRule})
+    ks = collect(keys(state.agents))
     # REVIEW: this is gross
     queues = OrderedDict{Int64, PriorityQueue}(
         [i => PriorityQueue{Rule, Int64}() for i in ks]
@@ -195,11 +195,11 @@ function update_step(state::GameState, imap::InteractionMap, tset::Vector{Functi
     for i = ks
         agent = state.agents[i]
         obs = observe(agent, i, state, kdtree)
-        @show action = plan(agent, i, obs)
+        action = plan(agent, i, obs)
         sync!(queues[i], action)
     end
     # static interaction phase
-    @show new_pos = lookahead(state.agents, queues)
+    new_pos = lookahead(state.agents, queues)
     for i = eachindex(ks)
         agent_id = ks[i]
         agent = state.agents[agent_id]
@@ -208,7 +208,7 @@ function update_step(state::GameState, imap::InteractionMap, tset::Vector{Functi
         elem = state.scene.items[CartesianIndex(pot_pos)]
         key = typeof(agent) => typeof(elem)
         haskey(imap, key) || continue
-        @show rule = imap[key](agent_id, pot_pos)
+        rule = imap[key](agent_id, pot_pos)
         sync!(queues[agent_id], rule)
     end
     # dynamic interaction phase
@@ -229,12 +229,12 @@ function update_step(state::GameState, imap::InteractionMap, tset::Vector{Functi
         end
     end
     state = resolve(queues, state)
-
+    render_image(state, "output/$(state.time).png")
+    
     for r in tset
         r.predicate(state) && return r.effect
     end
 
-    render_image(state, "output/$(state.time).png")
     update_step(state, imap, tset)
 end
 

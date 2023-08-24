@@ -4,6 +4,7 @@ export ButterflyGame,
 
 "A game with butterflies =)"
 struct ButterflyGame <: Game end
+const time = 70
 
 function interaction_set(::ButterflyGame)
     set = [
@@ -17,7 +18,11 @@ function interaction_set(::ButterflyGame)
 end
 
 function termination_set(::ButterflyGame)
-    set = [TimeOut, NoPinecone, NoButterfly]
+    set = [
+        TerminationRule(st -> isempty(findall(st.scene.items .== pinecone)), GameOver()), # no pinecones
+        TerminationRule(st -> st.time > time, GameOver()), # Time out
+        TerminationRule(st -> isempty(findall(x -> isa(x, Butterfly), st.agents)), GameWon()) # victory!
+    ]
 end
 
 """
