@@ -178,8 +178,19 @@ end
 # Evolving game state (rule application)
 #################################################################################
 
+
 """
-    update_step(state::GameState, imap::InteractionMap)::GameState
+    run_game(state::GameState, imap::InteractionMap, tset::Vector{TerminationRule})
+
+Initializes the game state and evolves it.
+"""
+function run_game(state::GameState, imap::InteractionMap, tset::Vector{TerminationRule})
+    
+end
+
+
+"""
+    update_step(state::GameState, imap::InteractionMap, tset::Vector{TerminationRule})::(GameState, Bool)
 
 Produces the next game state.
 """
@@ -229,14 +240,16 @@ function update_step(state::GameState, imap::InteractionMap, tset::Vector{Termin
         end
     end
     state = resolve(queues, state)
-    render_image(state, "output/$(state.time).png")
+    #render_image(state, "output/$(state.time).png")
     
     for r in tset
         r.predicate(state) && return r.effect
     end
 
-    update_step(state, imap, tset)
+    isfinished = true
+    return (state, isfinished)
 end
+
 
 
 #################################################################################
