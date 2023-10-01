@@ -109,7 +109,7 @@ GameState(scene) = GameState(scene, OrderedDict{Int64, Agent}(), 0.0, 0)
 include("utils/utils.jl")
 include("rules.jl")
 include("elements.jl")
-include("engine.jl")
 include("scene.jl")
+include("engine.jl")
 include("games/games.jl")
 end

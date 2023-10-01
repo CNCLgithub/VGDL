@@ -1,6 +1,7 @@
 export InteractionMap,
     interaction_set,
     compile_interaction_set,
+    run_game,
     update_step,
     sync!,
     modify!,
@@ -180,12 +181,16 @@ end
 
 
 """
-    run_game(state::GameState, imap::InteractionMap, tset::Vector{TerminationRule})
+    run_game(g::Game, scene::GridScene)
 
 Initializes the game state and evolves it.
 """
-function run_game(state::GameState, imap::InteractionMap, tset::Vector{TerminationRule})
-    
+function run_game(g::Game, scene::GridScene)
+    state = GameState(scene)
+    imap = compile_interaction_set(g)
+    tset = termination_set(g)
+    new_state, isfinished = update_step(state, imap, tset)
+    isfinished && (state = new_state)
 end
 
 
@@ -195,6 +200,8 @@ end
 Produces the next game state.
 """
 function update_step(state::GameState, imap::InteractionMap, tset::Vector{TerminationRule})
+    isfinished = false
+
     ks = collect(keys(state.agents))
     # REVIEW: this is gross
     queues = OrderedDict{Int64, PriorityQueue}(
@@ -243,7 +250,7 @@ function update_step(state::GameState, imap::InteractionMap, tset::Vector{Termin
     #render_image(state, "output/$(state.time).png")
     
     for r in tset
-        r.predicate(state) && return r.effect
+        r.predicate(state) && return (r.effect, isfinished)
     end
 
     isfinished = true

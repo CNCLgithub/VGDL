@@ -122,8 +122,13 @@ function save_video(filename::String)
     end
 end
 
+function run_game_test()
+    g = ButterflyGame()
+    scene = random_scene((10,10), 0., 4)
+    run_game(g, scene)
+end
+
 #test_one()
 #test_two()
-collision_test(l4)
-
-
+#collision_test(l4)
+run_game_test()
