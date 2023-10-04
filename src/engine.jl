@@ -178,29 +178,29 @@ end
 #################################################################################
 # Evolving game state (rule application)
 #################################################################################
-
+isfinished(st::GameState, tset::Array{TerminationRule}) = any(map(r -> r.predicate(st), tset))
 
 """
     run_game(g::Game, scene::GridScene)
 
 Initializes the game state and evolves it.
 """
-function run_game(g::Game, scene::GridScene)
-    state = GameState(scene)
+function run_game(g::Game, state::GameState)
     imap = compile_interaction_set(g)
     tset = termination_set(g)
-    new_state, isfinished = update_step(state, imap, tset)
-    isfinished && (state = new_state)
+    while !isfinished(state, tset)
+        queue = action_step(g, state)
+        state  = update_step(state, imap)
+    end
+    return state
 end
 
-
 """
-    update_step(state::GameState, imap::InteractionMap, tset::Vector{TerminationRule})::(GameState, Bool)
+    update_step(state::GameState, imap::InteractionMap)::GameState
 
 Produces the next game state.
 """
-function update_step(state::GameState, imap::InteractionMap, tset::Vector{TerminationRule})
-    isfinished = false
+function update_step(state::GameState, imap::InteractionMap)
 
     ks = collect(keys(state.agents))
     # REVIEW: this is gross
@@ -248,13 +248,6 @@ function update_step(state::GameState, imap::InteractionMap, tset::Vector{Termin
     end
     state = resolve(queues, state)
     #render_image(state, "output/$(state.time).png")
-    
-    for r in tset
-        r.predicate(state) && return (r.effect, isfinished)
-    end
-
-    isfinished = true
-    return (state, isfinished)
 end
 
 
