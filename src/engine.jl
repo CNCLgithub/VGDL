@@ -178,7 +178,8 @@ end
 #################################################################################
 # Evolving game state (rule application)
 #################################################################################
-isfinished(st::GameState, tset::Array{TerminationRule}) = any(map(r -> r.predicate(st), tset))
+isfinished(st::GameState, tset::Array{TerminationRule}) =
+    any(r -> r.predicate(st), tset)
 
 """
     run_game(g::Game, scene::GridScene)
