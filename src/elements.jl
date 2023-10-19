@@ -1,36 +1,28 @@
-export Obstacle, obstacle,
-    Pinecone, pinecone,
-    Ground, ground,
+export  evolve,
     position,
     policy,
     observe,
     plan,
+    actionspace,
     Observation,
     NoObservation,
-    PosObs,
+    no_obs,
     Policy,
     RandomPolicy,
+    random_policy,
     GreedyPolicy,
-    Player,
-    Butterfly
+    greedy_policy
 
 
 #################################################################################
 # Static Elements
 #################################################################################
 
-struct Obstacle <: StaticElement end
-const obstacle = Obstacle()
-
-struct Pinecone <: StaticElement end
-const pinecone = Pinecone()
-
-struct Ground <: StaticElement end
-const ground = Ground()
-
 #################################################################################
-# Agents
+# Dynamic Elements
 #################################################################################
+
+function evolve end
 
 """
     position (::DynamicElement)::SVector{2, Int64}
@@ -38,6 +30,16 @@ const ground = Ground()
 position of an element
 """
 function position end
+
+#################################################################################
+# Agents
+#################################################################################
+
+function evolve(el::Agent, state::GameState)
+    obs = observe(el, state)
+    action = plan(el, obs)
+end
+
 """
     policy (::Agent)::Policy
 
@@ -62,13 +64,12 @@ actionspace(::Agent) = _default_actionspace
 
 abstract type Observation end
 
-struct PosObs <: Observation
-    data::SVector{2, Int32}
+struct DirectObs <: Observation
+    state::GameState
 end
 
 struct NoObservation <: Observation end
 const no_obs = NoObservation()
-
 
 #################################################################################
 # Agent policies
@@ -77,8 +78,8 @@ const no_obs = NoObservation()
 abstract type Policy end
 
 "Sugar to extract agent's policy and use it for planning"
-function plan(agent::Agent, agent_index::Int, obs::Observation)
-    plan(policy(agent), agent, agent_index, obs)
+function plan(agent::Agent, obs::Observation)
+    plan(agent, obs, policy(agent))
 end
 
 """
@@ -87,78 +88,32 @@ Why think when you can act.
 struct GreedyPolicy <: Policy end
 const greedy_policy = GreedyPolicy()
 
-function plan(::GreedyPolicy, agent::Agent, agent_index::Int, ::NoObservation)
-    @show action = rand(actionspace(agent))
-    promise(action)(agent_index, 0)# REVIEW: the second argument is not used
-end
-
 """
 Just close your eyes, everything will be fine
 """
 struct RandomPolicy <: Policy end
 const random_policy = RandomPolicy()
 
-function plan(::RandomPolicy, agent::Agent, agent_index::Int, ::Observation)
+function plan(agent::Agent, ::Observation, ::RandomPolicy)
     action = rand(actionspace(agent))
-    promise(action)(agent_index, 0)# REVIEW: the second argument is not used
 end
 
 #################################################################################
 # Agent implementations
 #################################################################################
 
-"Default, no observation"
-observe(::Agent, index::Int64, ::GameState, ::KDTree) = no_obs
+"Default, DirectObs"
+observe(::Agent, gs::GameState)  =
+    DirectObs(gs)
 
 "Default, random policy"
 policy(::Agent) = random_policy
 
-@with_kw mutable struct Butterfly <: Agent
-    position::SVector{2, Int64}
-    energy::Float64 = 0.0
-    policy::Policy = random_policy
-end
-position(agent::Butterfly) = agent.position
-policy(agent::Butterfly) = agent.policy
-
-@with_kw mutable struct Player <: Agent
-    position::SVector{2, Int64}
-    policy::Policy = greedy_policy
-end
-
-position(agent::Player) = agent.position
-policy(agent::Player) = agent.policy
-
-function observe(agent::Player, agent_index::Int, state::GameState, kdtree::KDTree)::Observation
-    # get all butterfly locations
-    l_agents = length(state.agents)
-    if l_agents == 1
-        return NoObservation()
-    end
-
-    # get nearest two agents
-    bounds = state.scene.bounds
-    a, b = bounds
-    r = max(a, b)
-    idxs, dist = knn(kdtree, agent.position, 2, true)
-
-    # returns the location of the nearest butterfly
-    position = kdtree.data[idxs[2]]
-    return PosObs(position)
-end
-
-
-function plan(::GreedyPolicy, agent::Player, agent_index::Int, obs::PosObs)
-    # moves toward the nearest butterfly
-    dy, dx = agent.position - obs.data
-    direction = if abs(dx) > abs(dy)
-        dx > 0 ? Left : Right
-    else
-        dy > 0 ? Up : Down
-    end
-    direction(agent_index)
-end
 
 #################################################################################
 # helpers
 #################################################################################
+
+Base.length(::Element) = 1
+Base.iterate(e::Element) = (e, nothing)
+Base.iterate(e::Element, ::Any) = nothing
