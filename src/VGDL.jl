@@ -5,34 +5,55 @@ using Parameters
 using StaticArrays: SVector
 using AccessorsExtra
 using DataStructures 
-using InteractiveUtils
+# using InteractiveUtils
 using NearestNeighbors
+using DocStringExtensions
 
 export Game,
+    GameState,
+    Scene,
+    GridScene,
+    load_level,
+    levels,
     interaction_set,
     Effect, ChangeEffect, DeathEffect, BirthEffect,
     termination_set,
     TerminationEffect,
     Application, Single, Many,
     Rule, lens, transform, priority, promise,
-    GameState,
-    Element, StaticElement, Agent
+    Element, StaticElement, Agent,
+    Graphics,
+    render
 
 
 #################################################################################
-# Abstract game types
+# Abstract game
 #################################################################################
 
-# define the main interface
+"A VGDL game"
 abstract type Game end
 
 """
     interaction_set(::Game)
 
 Returns the interaction set for a game.
-
 """
 function interaction_set end
+
+
+"""
+    termination_set(::Game)
+
+Returns the termination set for a game.
+"""
+function terminination_set end
+
+function levels end
+function load_level end
+
+#################################################################################
+# Abstract interactions
+#################################################################################
 
 abstract type Effect end
 abstract type ChangeEffect <: Effect end
@@ -98,18 +119,35 @@ abstract type Agent <: DynamicElement end
 
 abstract type Scene end
 
+mutable struct GridScene <: Scene
+    bounds::Tuple{Int, Int}
+    static::Matrix{StaticElement}
+    dynamic::OrderedDict{Int64, DynamicElement}
+    kdtree::KDTree
+end
+
 mutable struct GameState
     scene::Scene
-    agents::OrderedDict{Int64, Agent}
     reward::Float64
     time::Int64
+    max_time::Int64
 end
-GameState(scene) = GameState(scene, OrderedDict{Int64, Agent}(), 0.0, 0)
+
+# REVIEW: is this used?
+GameState(scene::Scene, max_time::Int64) =
+    GameState(scene, 0.0, 0, max_time)
+
+abstract type Graphics end
+
+"""
+    render(::Graphics, ::GameState)
+"""
+function render end
 
 include("utils/utils.jl")
 include("rules.jl")
 include("elements.jl")
-include("scene.jl")
 include("engine.jl")
+include("graphics.jl")
 include("games/games.jl")
 end

@@ -12,7 +12,8 @@ export NoAction,
 
 
 struct NoAction <: Rule{NoEffect, Many} end
-promise(::Type{NoAction}) = (i, o) -> NoAction()
+const no_action = NoAction()
+promise(::Type{NoAction}) = (i, o) -> no_action
 # Don't need to change the queue
 add!(::PriorityQueue, ::NoAction) = nothing
 
@@ -72,16 +73,6 @@ function modify!(q::PriorityQueue, ::Stepback)
     return nothing
 end
 
-
-# struct Applicator{T} <: Rule{T}
-#     lens
-#     transform::Function
-#     base::Rule{T}
-#     function Applicator(r::Rule{<:Effect}, l)
-#         new{T}(opcompose(l, lens(r)), transform(r), r)
-#     end
-# end
-# TODO: Implement lens and transform
 
 struct Clone <: Rule{BirthEffect, Many}
     ref::Int64

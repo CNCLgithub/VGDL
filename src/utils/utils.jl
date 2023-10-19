@@ -8,38 +8,25 @@ export Line, typemin, collisions
 # helps with matrix indexing
 Base.CartesianIndex(x::SVector{2, Int64}) = CartesianIndex{2}(x[1], x[2])
 Base.convert(::Type{CartesianIndex{2}}, x::SVector{2, Int64}) =
-    CartesianIndex{2}(x[1], x[2])
+    CartesianIndex(x)
 
-# check for collisions
-# TODO: fix
-#= function Base.length(::Type{Vector{SVector{2, Int64}}})
-    2
-end
-function Base.typemin(::Type{SVector{2, Int64}})
-    SVector{2,Int64}([typemin(Int64), typemin(Int64)])
-end
-function Base.typemax(::Type{SVector{2, Int64}})
-    SVector{2,Int64}([typemax(Int64), typemax(Int64)])
-end
- Base.:-(a::SVector{2, Int64}, b::Int64) = norm(a,b)
-Base.:-(a::Int64, b::SVector{2, Int64}) = norm(b,a)
-
-const Line = Vector{SVector{2, Int64}}
-@inline (::Distances.Euclidean)(a::Line, b::Line) = 
-    min(cityblock(a[1], b[1]), cityblock(a[1], b[2]), cityblock(a[2], b[1]), cityblock(a[2], b[2]))
- =#
-
-function collisions(tree::NNTree, index::Int64, radius::Int64, og_pos::Vector{SVector{2, Int64}})
-    pos = tree.data[index]
+function collisions(tree::NNTree, index::Int64, radius::Int64,
+                    prev_pos::Vector{SVector{2, Int64}})
+    cur_tgt_loc = tree.data[index]
+    pre_tgt_loc = prev_pos[index]
     new_pos = tree.data
-
     # is anything present at this location?
-    idxs = inrange(tree, pos, radius)
-    filter!(x -> x != index, idxs)
-    colliders = []
+    idxs = inrange(tree, cur_tgt_loc, radius)
+    n = length(idxs)
 
-    for ci in idxs
-        if (og_pos[ci] == new_pos[index]) || (new_pos[ci] == new_pos[index]) || (og_pos[index] == new_pos[ci])
+    # TODO: improve, maybe with channels?
+    colliders = Int64[] # Channel{Int64}(n)
+    for ci = idxs
+        ci == index && continue
+        if (new_pos[ci] == cur_tgt_loc)  ||
+            (new_pos[ci] == pre_tgt_loc) ||
+            (prev_pos[ci] == cur_tgt_loc)
+
             push!(colliders, ci)
         end
     end
@@ -47,7 +34,8 @@ function collisions(tree::NNTree, index::Int64, radius::Int64, og_pos::Vector{SV
     return colliders
 end
 
-get_agent(i::Int64) = @optic _.agents[i]
-get_static(i::CartesianIndex{2}) = @optic _.scene.items[i]
+get_dynamic(i::Int64) = @optic _.scene.dynamic[i]
+get_agent(i::Int64) = get_dynamic(i) # TODO: depricate
+get_static(i::CartesianIndex{2}) = @optic _.scene.static[i]
 
 include("mutating_lens.jl")
