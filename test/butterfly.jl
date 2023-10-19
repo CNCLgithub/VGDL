@@ -41,33 +41,3 @@ function test_graphics()
 end
 
 test_graphics();
-
-# function test_two()
-#     g = ButterflyGame()
-#     scene = random_scene((10,10), 0., 4)
-#     state = GameState(scene)
-
-#     p = Player(; position = [2,2])
-#     state.agents[1] = p
-#     b = Butterfly(; position = [5,5])
-#     state.agents[2] = b
-#     b2 = Butterfly(; position = [5,7])
-#     state.agents[3] = b2
-
-#     imap = compile_interaction_set(g)
-#     tset = termination_set(g)
-
-#     state = update_step(state, imap, tset)
-# end
-
-
-# function collision_test(level::String)
-#     for i in 1:5
-#         g = ButterflyGame()
-#         state = generate_map(g, level)
-#         imap = compile_interaction_set(g)
-#         tset = termination_set(g)
-#         state = update_step(state, imap, tset)
-#         save_video("level4_$(i)")
-#     end
-# end
