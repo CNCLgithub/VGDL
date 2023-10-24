@@ -2,6 +2,8 @@ export InteractionMap,
     interaction_set,
     compile_interaction_set,
     run_game,
+    isfinished,
+    action_step,
     update_step,
     sync!,
     modify!,
@@ -26,7 +28,7 @@ rule instantiations.
 
 The result is used in `update_step` and `resolve`.
 """
-function compile_interaction_set(g::Game) # Generic
+function compile_interaction_set(g::Game)
     iset = interaction_set(g)
     # a temporary mapping of type pairs ->
     # a vector of functions that will be composed
@@ -92,16 +94,15 @@ then resolves the next game state.
 """
 function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
                  st::GameState)
-    ks = collect(keys(st.agents))
-
     # change death and birth queue
     cq = Dict{Any, Function}()
     bq = Dict{Any, Function}()
     dq = Dict{Any, Function}()
 
+    scene = st.scene
     # move rules from agent queues to c,b,d queues
-    for i = ks
-        for (r, p) in queues[i]
+    for i = scene.dynamic.keys
+        for (r, _) = queues[i]
             pushtoqueue!(r, cq, bq, dq)
         end
     end
@@ -129,8 +130,11 @@ function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
     end
 
     new_state.time = st.time + 1
+    new_scene = new_state.scene
+    new_scene.kdtree = KDTree(lookahead(new_scene.dynamic), cityblock)
     return new_state
 end
+
 
 """
     selectqueue(::Rule, c, b, d)
@@ -142,6 +146,7 @@ selectqueue(::Rule{ChangeEffect, <:Application}, c, b, d) = c
 selectqueue(::Rule{BirthEffect, <:Application}, c, b, d) = b
 selectqueue(::Rule{DeathEffect, <:Application}, c, b, d) = d
 
+
 """
     pushtoqueue!(r::Rule, c,b,d)
 
@@ -149,11 +154,13 @@ Adds `r` to the proper change, birth, or death queue.
 """
 function pushtoqueue! end
 
+
 "Has no effect..."
 function pushtoqueue!(::Rule{<:NoEffect, <:Application},
                       ::AbstractDict, ::AbstractDict, ::AbstractDict)
     return true
 end
+
 
 "Add `r` as long as its lens is not already present"
 function pushtoqueue!(r::Rule{<:Effect, Single},
@@ -181,7 +188,7 @@ end
 isfinished(st::GameState, tset::Array{TerminationRule}) = any(map(r -> r.predicate(st), tset))
 
 """
-    run_game(g::Game, scene::GridScene)
+    run_game(g::Game, state::GameState)
 
 Initializes the game state and evolves it.
 """
@@ -189,67 +196,70 @@ function run_game(g::Game, state::GameState)
     imap = compile_interaction_set(g)
     tset = termination_set(g)
     while !isfinished(state, tset)
-        queue = action_step(g, state)
-        state  = update_step(state, imap)
+        queue = action_step(state)
+        state = update_step(g, state, imap)
     end
     return state
 end
 
+function action_step(state::GameState)
+    queues = OrderedDict{Int64, PriorityQueue}()
+    scene = state.scene
+    # action phase
+    for i = scene.dynamic.keys
+        el = scene.dynamic[i]
+        rule = evolve(el, state)
+        q = PriorityQueue{Rule, Int64}()
+        sync!(q, promise(rule)(i, 0))
+        queues[i] = q
+    end
+    return queues
+end
+
+function update_step(state::GameState, imap::InteractionMap)
+    queues = action_step(state)
+    update_step(state, imap, queues)
+end
 """
     update_step(state::GameState, imap::InteractionMap)::GameState
 
 Produces the next game state.
 """
-function update_step(state::GameState, imap::InteractionMap)
+function update_step(state::GameState, imap::InteractionMap,
+                     queues::OrderedDict{Int64, PriorityQueue})
 
-    ks = collect(keys(state.agents))
-    # REVIEW: this is gross
-    queues = OrderedDict{Int64, PriorityQueue}(
-        [i => PriorityQueue{Rule, Int64}() for i in ks]
-    )
-    og_pos = lookahead(state.agents)
-    kdtree = KDTree(og_pos, cityblock)
-    # action phase
-    for i = ks
-        agent = state.agents[i]
-        obs = observe(agent, i, state, kdtree)
-        action = plan(agent, i, obs)
-        sync!(queues[i], action)
-    end
+    scene = state.scene
+    ks = scene.dynamic.keys
     # static interaction phase
-    new_pos = lookahead(state.agents, queues)
-    for i = eachindex(ks)
-        agent_id = ks[i]
-        agent = state.agents[agent_id]
-        pot_pos = new_pos[i]
-        # could be a `Ground` | `Obstacle` | `Pinecone`
-        elem = state.scene.items[CartesianIndex(pot_pos)]
-        key = typeof(agent) => typeof(elem)
+    new_pos = lookahead(scene.dynamic, queues)
+    for (i, el_id) = enumerate(ks)
+        el = scene.dynamic[el_id]
+        pot_pos = x, y = new_pos[i]
+        tile = scene.static[x, y]
+        key = typeof(el) => typeof(tile)
         haskey(imap, key) || continue
-        rule = imap[key](agent_id, pot_pos)
-        sync!(queues[agent_id], rule)
+        rule = imap[key](el_id, pot_pos)
+        sync!(queues[el_id], rule)
     end
     # dynamic interaction phase
     kdtree = KDTree(new_pos, cityblock)
-    for i = eachindex(ks)
-        agent_id = ks[i]
-        agent = state.agents[agent_id]
-        # Check the agent's position on the gridscene
-        cs = collisions(kdtree, i, 1, og_pos)
+    for (i, el_id) = enumerate(ks)
+        el = scene.dynamic[el_id]
+        T_el = typeof(el)
+        # Check the el's position on the gridscene
+        cs = collisions(kdtree, i, 1, scene.kdtree.data)
         # Update
         for ci in cs
             cindex = ks[ci]
-            collider = state.agents[cindex]
-            key = typeof(agent) => typeof(collider)
+            collider = scene.dynamic[cindex]
+            key = T_el => typeof(collider)
             haskey(imap, key) || continue
-            rule = imap[key](agent_id, cindex)
-            sync!(queues[agent_id], rule)
+            rule = imap[key](el_id, cindex)
+            sync!(queues[el_id], rule)
         end
     end
     state = resolve(queues, state)
-    #render_image(state, "output/$(state.time).png")
 end
-
 
 
 #################################################################################
@@ -278,9 +288,12 @@ function lookahead(agents::OrderedDict{Int64,Agent},
 end
 
 function new_index(st::GameState)
-    allkeys = collect(keys(st.agents))
-    key = 
-        length(allkeys) == 0 ? 0 : last(allkeys)
-    l = get_agent(key + 1)
+    new_index(st.scene)
+end
+
+function new_index(s::GridScene)
+    keys = s.dynamic.keys
+    key = length(keys) == 0 ? 0 : last(keys)
+    l = get_dynamic(key + 1)
     Lens!(l)
 end

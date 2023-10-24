@@ -4,7 +4,7 @@ using VGDL
 using VideoIO
 
 
-const l0 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
+const butterfly0 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
 w..1.....1..w...0.0.0.0w000w
 w.1....................w000w
 w...1...0.....A........w000w
@@ -16,7 +16,7 @@ wwwww................w.....w
 w........0.0.0.0.0...w0...0w
 wwwwwwwwwwwwwwwwwwwwwwwwwwww"
 
-const l1 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
+const butterfly1 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
 w..w0w........0........w0w.w
 w..........................w
 w...1...w...1.....www.....1w
@@ -28,7 +28,7 @@ w.........A................w
 w..w0w........0........w0w.w
 wwwwwwwwwwwwwwwwwwwwwwwwwwww"
 
-const l2 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
+const butterfly2 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
 w..............1.........0.w
 w..0000........1..........0w
 w...00......1..1..www......w
@@ -40,7 +40,7 @@ w..0000........1..........0w
 w..............1.........0.w
 wwwwwwwwwwwwwwwwwwwwwwwwwwww"
 
-const l3 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
+const butterfly3 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
 w00w.......................w
 w00w.................1.....w
 w00w......1................w
@@ -52,7 +52,7 @@ w......................wwwww
 w.....A..................00w
 wwwwwwwwwwwwwwwwwwwwwwwwwwww"
 
-const l4 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
+const butterfly4 = "wwwwwwwwwwwwwwwwwwwwwwwwwwww
 w.........A................w
 w..........................w
 w..........................w
@@ -67,14 +67,14 @@ wwwwwwwwwwwwwwwwwwwwwwwwwwww"
 
 
 function test_one()
-    scene = random_scene((30, 30), 0.25, 40)
+    scene = random_scene(g, (30, 30), 0.25, 40)
     state = GameState(scene)
-    render_image(state)
+    render_image(g, state)
 end
 
 function test_two()
     g = ButterflyGame()
-    scene = random_scene((10,10), 0., 4)
+    scene = random_scene(g, (10,10), 0., 4)
     state = GameState(scene)
 
     p = Player(; position = [2,2])
@@ -97,8 +97,8 @@ function collision_test(level::String)
         state = generate_map(g, level)
         imap = compile_interaction_set(g)
         tset = termination_set(g)
-        state = update_step(state, imap, tset)
-        save_video("level4_$(i)")
+        state = update_step(g, state, imap)
+        save_video("$(i)")
     end
 end
 
@@ -124,11 +124,12 @@ end
 
 function run_game_test()
     g = ButterflyGame()
-    scene = random_scene((10,10), 0., 4)
-    run_game(g, scene)
+    scene = random_scene(g, (10,10), 0., 4)
+    state = GameState(scene)
+    render_image(g, run_game(g, state), "output/new.jpg")
 end
 
 #test_one()
 #test_two()
-#collision_test(l4)
-run_game_test()
+collision_test(butterfly0)
+#run_game_test()

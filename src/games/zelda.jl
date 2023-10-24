@@ -1,38 +1,53 @@
-export ButterflyGame,
-    Butterfly,
-    Pinecone, pinecone,
-    observe,
-    plan,
-    generate_map, 
-    spawn_agents,
-    random_scene,
-    render_image
+export Zelda,
+    Lock, lock,
+    Key, key
 
-"A game with butterflies =)"
-struct ButterflyGame <: Game end
+"Find your key out the dungeon!"
+struct Zelda <: Game end
 
-#################################################################################
-# Game-specific elements
-#################################################################################
+struct Lock <: StaticElement end
+const lock = Lock()
 
-@with_kw mutable struct Butterfly <: Agent
+struct Key <: StaticElement end
+const key = Key()
+
+struct Sword <: StaticElement end
+const sword = Sword()
+
+#REVIEW: subtype of player
+@with_kw mutable struct Link <: Agent
     position::SVector{2, Int64}
-    energy::Float64 = 0.0
-    policy::Policy = random_policy
+    direction::SVector{2, Int64} = [0,1]
+    policy::Policy = greedy_policy
 end
-position(agent::Butterfly) = agent.position
-policy(agent::Butterfly) = agent.policy
+position(agent::Link) = agent.position
+policy(agent::Link) = agent.policy
 
 
-struct Pinecone <: StaticElement end
-const pinecone = Pinecone()
-
+abstract type Monster <: Agent end
+@with_kw mutable struct MonsterSlow <: Monster
+    position::SVector{2, Int64}
+    policy::Policy = random_policy
+    energy::Float64 = 1.0
+end
+@with_kw mutable struct MonsterNormal <: Monster
+    position::SVector{2, Int64}
+    policy::Policy = random_policy
+    energy::Float64 = 2.0
+end
+@with_kw mutable struct MonsterQuick <: Monster
+    position::SVector{2, Int64}
+    policy::Policy = random_policy
+    energy::Float64 = 3.0
+end
+position(agent::Monster) = agent.position
+policy(agent::Monster) = agent.policy
 
 #################################################################################
 # Game-specific agent implementation
 #################################################################################
 
-function observe(::ButterflyGame, agent::Player, agent_index::Int, state::GameState, kdtree::KDTree)::Observation
+function observe(::Zelda, agent::Link, agent_index::Int, state::GameState, kdtree::KDTree)::Observation
     # get all butterfly locations
     l_agents = length(state.agents)
     if l_agents == 1
@@ -49,7 +64,7 @@ function observe(::ButterflyGame, agent::Player, agent_index::Int, state::GameSt
 end
 
 
-function plan(::ButterflyGame, ::GreedyPolicy, agent::Player, agent_index::Int, obs::PosObs)
+function plan(::Zelda, ::GreedyPolicy, agent::Link, agent_index::Int, obs::PosObs)
     # moves toward the nearest butterfly
     dy, dx = agent.position - obs.data
     direction = if abs(dx) > abs(dy)
@@ -64,22 +79,25 @@ end
 # Game definition
 #################################################################################
 
-function interaction_set(::ButterflyGame)
+function interaction_set(::Zelda)
     set = [
-        (Player => Obstacle) => Stepback,
-        (Butterfly => Obstacle) => Stepback,
-        (Butterfly => Player) => KilledBy,
-        (Butterfly => Player) => ChangeScore,
-        (Butterfly => Pinecone) => Retile{Ground},
-        (Butterfly => Pinecone) => Clone,
+        (Link => Obstacle) => Stepback,
+        (Monster => Monster) => Stepback,
+        (Monster => Obstacle) => Stepback,
+        (Sword => Element) => Die,
+        #(Monster => Sword) => KilledBy,
+        #(Link => Monster) => KilledBy,
+        (Key => Link) => Retile{Ground}, 
+        (Link => Key) => Add{Key},
+        (Lock => Link) => Retile{Ground}, ##If Link has key
     ]
 end
 
-function termination_set(::ButterflyGame)
+function termination_set(::Zelda)
     set = [
-        TerminationRule(st -> isempty(findall(st.scene.items .== pinecone)), GameOver()), # no pinecones
-        TerminationRule(st -> st.time > time, GameOver()), # Time out
-        TerminationRule(st -> isempty(findall(x -> isa(x, Butterfly), st.agents)), GameWon()) # victory!
+        TerminationRule(st -> isempty(findall(x -> isa(x, Link), st.agents)), GameOver()),
+        TerminationRule(st -> isempty(findall(st.scene.items .== lock)), GameOver()), # no pinecones
+        TerminationRule(st -> st.time > time, GameOver()) # Time out
     ]
 end
 
@@ -92,7 +110,7 @@ end
 
 Initialize state based on symbol map.
 """
-function generate_map(::ButterflyGame, setup::String)::GameState
+function generate_map(::Zelda, setup::String)::GameState
     h = count(==('\n'), setup) + 1
     w = 0
     for char in setup
@@ -105,7 +123,7 @@ function generate_map(::ButterflyGame, setup::String)::GameState
     m = scene.items
     V = SVector{2, Int64}
     p_pos = Vector{V}()
-    b_pos = Vector{V}()
+    m_pos = Vector{V}()
 
     # StaticElements
     setup = replace(setup, r"\n" => "")
@@ -113,16 +131,18 @@ function generate_map(::ButterflyGame, setup::String)::GameState
     setup = permutedims(setup, (2,1))
 
     for (index, char) in enumerate(setup)
-        if char == 'w'
+        if char == 'g'
+            m[index] = lock
+        elseif char == '+'
+            m[index] = key
+        elseif char == 'w'
             m[index] = obstacle
         elseif char == '.'
             m[index] = ground
-        elseif char == '0'
-            m[index] = pinecone
         else
             ci = CartesianIndices(m)[index]
-            if char == '1'
-                push!(b_pos, ci)
+            if char == '2'
+                push!(m_pos, ci)
             else
                 push!(p_pos, ci)
             end
@@ -132,12 +152,12 @@ function generate_map(::ButterflyGame, setup::String)::GameState
     # DynamicElements
     state = GameState(scene)
     for pos in p_pos
-        p = Player(; position = pos)
+        p = Link(; position = pos)
         l = new_index(state)
         insert(state, l, p)
     end
-    for pos in b_pos
-        b = Butterfly(; position = pos)
+    for pos in m_pos
+        b = MonsterNormal(; position = pos)
         l = new_index(state)
         insert(state, l, b)
     end
@@ -184,40 +204,14 @@ end
 # Scene rendering
 #################################################################################
 
-function random_scene(::ButterflyGame, bounds::Tuple, o_density::Float64, npinecones::Int64)::GridScene
-    m = Matrix{StaticElement}(fill(ground, bounds)) 
-
-    # obstacles first
-    if o_density > 0
-        @inbounds for i = eachindex(m)
-            rand() < o_density && (m[i] = obstacle)
-        end
-    end
-    # borders second
-    m[1:end, 1] .= obstacle
-    m[1:end, end] .= obstacle
-    m[1, 1:end] .= obstacle
-    m[end, 1:end] .= obstacle
-    # pinecones last
-    if npinecones > 0
-        pine_map = findall(m .== ground)
-        shuffle!(pine_map)
-        @inbounds for i = 1:npinecones
-            m[pine_map[i]] = pinecone
-        end
-    end
-
-    scene = GridScene(bounds, m)
-    return scene
-end
-
 color(::Ground) = gray_color
 color(::Obstacle) = black_color
-color(::Pinecone) = green_color
-color(::Butterfly) = pink_color
+color(::Key) = green_color
+color(::Lock) = orange_color
+color(::Monster) = pink_color
 color(::Player) = blue_color
 
-function render_image(::ButterflyGame, state::GameState, path::String;
+function render_image(::Zelda, state::GameState, path::String;
     img_res::Tuple{Int64, Int64} = (100,100))
 
     # StaticElements
@@ -226,7 +220,8 @@ function render_image(::ButterflyGame, state::GameState, path::String;
     items = scene.items
     img = fill(color(ground), bounds)
     img[findall(x -> x == obstacle, items)] .= color(obstacle)
-    img[findall(x -> x == pinecone, items)] .= color(pinecone)
+    img[findall(x -> x == key, items)] .= color(key)
+    img[findall(x -> x == lock, items)] .= color(lock)
 
     # DynamicElements
     agents = state.agents
@@ -239,5 +234,5 @@ function render_image(::ButterflyGame, state::GameState, path::String;
     # save & open image
     img = repeat(img, inner = img_res)
     save(path, img)
-    
+
 end

@@ -4,10 +4,14 @@ export NoAction,
     Left,
     Right,
     Stepback,
+    Clone,
+    Die,
     KilledBy,
     Retile,
+    Add,
     ChangeScore,
     CompositeRule,
+    time,
     TerminationRule
 
 
@@ -95,6 +99,13 @@ lens(r::Clone) = r.lens
 transform(r::Clone) = deepcopy
 promise(::Type{Clone}) = (i, o) -> Clone(i)
 
+struct Die <: Rule{ChangeEffect, Single}
+    ref::Int64
+end
+lens(r::Die) = r.ref
+transform(r::Die) = x -> ground
+promise(::Type{Die}) = (i, o) -> Die(i)
+
 struct KilledBy <: Rule{DeathEffect, Single}
     ref
     killer
@@ -135,6 +146,17 @@ transform(::Retile{T}) where {T} = _ -> T()
 promise(::Type{Retile{T}}) where {T} = (i, o) -> Retile{T}(i, o)
 priority(::Retile) = 5
 
+struct Add{T <: StaticElement} <: Rule{ChangeEffect, Single}
+    ref::CartesianIndex{2}
+    function Add{T}(i, o) where {T}
+        new{T}(o)
+    end
+end
+lens(r::Add) = get_static(r.ref)
+transform(::Add{T}) where {T} = _ -> T()
+promise(::Type{Add{T}}) where {T} = (i, o) -> Add{T}(i, o)
+priority(::Add) = 4
+
 struct ChangeScore <: Rule{ChangeEffect, Many} end
 lens(::ChangeScore) = @optic _.reward
 transform(::ChangeScore) = x -> x + 1
@@ -167,6 +189,8 @@ end
 
 
 "Termination Set"
+const time = 70
+
 struct GameOver <: TerminationEffect end
 struct GameWon <: TerminationEffect end
 struct TerminationRule # I know its not a normal `Rule`
