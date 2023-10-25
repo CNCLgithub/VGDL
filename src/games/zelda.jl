@@ -60,11 +60,11 @@ function observe(::Zelda, agent::Link, agent_index::Int, state::GameState, kdtre
     idxs, dist = knn(kdtree, agent.position, 2, true)
     # returns the location of the nearest butterfly
     position = kdtree.data[idxs[2]]
-    return PosObs(position)
+    return DirectObs(position)
 end
 
 
-function plan(::Zelda, ::GreedyPolicy, agent::Link, agent_index::Int, obs::PosObs)
+function plan(::Zelda, ::GreedyPolicy, agent::Link, agent_index::Int, obs::DirectObs)
     # moves toward the nearest butterfly
     dy, dx = agent.position - obs.data
     direction = if abs(dx) > abs(dy)

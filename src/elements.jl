@@ -4,17 +4,13 @@ export  evolve,
     observe,
     plan,
     actionspace,
-    actionspace,
     Observation,
     NoObservation,
-    no_obs,
     no_obs,
     Policy,
     RandomPolicy,
     random_policy,
-    random_policy,
     GreedyPolicy,
-    greedy_policy
     greedy_policy
 
 
@@ -39,9 +35,9 @@ function position end
 # Agents
 #################################################################################
 
-function evolve(g::Game, el::Agent, state::GameState)
-    obs = observe(g, el, state)
-    action = plan(g, el, obs)
+function evolve(el::Agent, state::GameState)
+    obs = observe(el, state)
+    action = plan(el, obs)
 end
 
 """
@@ -81,8 +77,8 @@ const no_obs = NoObservation()
 abstract type Policy end
 
 "Sugar to extract agent's policy and use it for planning"
-function plan(g::Game, agent::Agent, agent_index::Int, obs::Observation)
-    plan(g, policy(agent), agent, agent_index, obs)
+function plan(agent::Agent, obs::Observation)
+        plan(agent, obs, policy(agent))
 end
 
 
@@ -92,11 +88,6 @@ Why think when you can act.
 struct GreedyPolicy <: Policy end
 const greedy_policy = GreedyPolicy()
 
-function plan(::Game, ::GreedyPolicy, agent::Agent, agent_index::Int, ::NoObservation)
-    @show action = rand(actionspace(agent))
-    promise(action)(agent_index, 0)# REVIEW: the second argument is not used
-end
-
 
 """
 Just close your eyes, everything will be fine
@@ -104,17 +95,16 @@ Just close your eyes, everything will be fine
 struct RandomPolicy <: Policy end
 const random_policy = RandomPolicy()
 
-function plan(::Game, ::RandomPolicy, agent::Agent, agent_index::Int, ::Observation)
+function plan(agent::Agent, ::Observation, ::RandomPolicy)
     action = rand(actionspace(agent))
 end
-
 
 #################################################################################
 # Agent implementations
 #################################################################################
 
 "Default, DirectObs"
-observe(::Game, ::Agent, gs::GameState)  =
+observe(::Agent, gs::GameState)  =
     DirectObs(gs)
 
 "Default, random policy"

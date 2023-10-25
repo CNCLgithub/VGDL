@@ -189,8 +189,6 @@ function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
     # move rules from agent queues to c,b,d queues
     for i = scene.dynamic.keys
         for (r, _) = queues[i]
-    for i = scene.dynamic.keys
-        for (r, _) = queues[i]
             pushtoqueue!(r, cq, bq, dq)
         end
     end
@@ -298,6 +296,7 @@ end
 function new_index(st::GameState)
     new_index(st.scene)
 end
+
 function new_index(s::GridScene)
     keys = s.dynamic.keys
     key = length(keys) == 0 ? 0 : last(keys)
