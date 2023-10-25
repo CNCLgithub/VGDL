@@ -4,6 +4,8 @@ export InteractionMap,
     run_game,
     isfinished,
     action_step,
+    isfinished,
+    action_step,
     update_step,
     sync!,
     modify!,
@@ -28,8 +30,8 @@ rule instantiations.
 
 The result is used in `update_step` and `resolve`.
 """
-function compile_interaction_set(g::Game)
-    iset = interaction_set(g)
+function compile_interaction_set(::Type{G}) where {G<:Game}
+    iset = interaction_set(G)
     # a temporary mapping of type pairs ->
     # a vector of functions that will be composed
     vmap = Dict{IPair, Vector{Type{<:Rule}}}()
@@ -53,6 +55,88 @@ function compile_interaction_set(g::Game)
     end
     return imap
 end
+
+#################################################################################
+# Evolving game state (rule application)
+#################################################################################
+isfinished(st::GameState, tset::Array{TerminationRule}) =
+    any(r -> r.predicate(st), tset)
+
+"""
+    run_game(g::Game, scene::GridScene)
+
+Initializes the game state and evolves it.
+"""
+function run_game(::Type{G}, state::GameState) where {G <: Game}
+    imap = compile_interaction_set(G)
+    tset = termination_set(G)
+    while !isfinished(state, tset)
+        queue = action_step(state)
+        state  = update_step(state, imap)
+    end
+    return state
+end
+
+function action_step(state::GameState)
+    queues = OrderedDict{Int64, PriorityQueue}()
+    scene = state.scene
+    # action phase
+    for i = scene.dynamic.keys
+        el = scene.dynamic[i]
+        rule = evolve(el, state)
+        q = PriorityQueue{Rule, Int64}()
+        sync!(q, promise(rule)(i, 0))
+        queues[i] = q
+    end
+    return queues
+end
+
+function update_step(state::GameState, imap::InteractionMap)
+    queues = action_step(state)
+    update_step(state, imap, queues)
+end
+"""
+    update_step(state::GameState, imap::InteractionMap)::GameState
+
+Produces the next game state.
+"""
+function update_step(state::GameState, imap::InteractionMap,
+                     queues::OrderedDict{Int64, PriorityQueue})
+
+    scene = state.scene
+    ks = scene.dynamic.keys
+    # static interaction phase
+    new_pos = lookahead(scene.dynamic, queues)
+    for (i, el_id) = enumerate(ks)
+        el = scene.dynamic[el_id]
+        pot_pos = x, y = new_pos[i]
+        tile = scene.static[x, y]
+        key = typeof(el) => typeof(tile)
+        haskey(imap, key) || continue
+        rule = imap[key](el_id, pot_pos)
+        sync!(queues[el_id], rule)
+    end
+    # dynamic interaction phase
+    kdtree = KDTree(new_pos, cityblock)
+    for (i, el_id) = enumerate(ks)
+        el = scene.dynamic[el_id]
+        T_el = typeof(el)
+        # Check the el's position on the gridscene
+        cs = collisions(kdtree, i, 1, scene.kdtree.data)
+        # Update
+        for ci in cs
+            cindex = ks[ci]
+            collider = scene.dynamic[cindex]
+            key = T_el => typeof(collider)
+            haskey(imap, key) || continue
+            rule = imap[key](el_id, cindex)
+            sync!(queues[el_id], rule)
+        end
+    end
+    state = resolve(queues, state)
+end
+
+
 
 
 #################################################################################
@@ -94,6 +178,7 @@ then resolves the next game state.
 """
 function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
                  st::GameState)
+
     # change death and birth queue
     cq = Dict{Any, Function}()
     bq = Dict{Any, Function}()
@@ -183,101 +268,19 @@ function pushtoqueue!(r::Rule{<:Effect, Many},
 end
 
 #################################################################################
-# Evolving game state (rule application)
-#################################################################################
-isfinished(st::GameState, tset::Array{TerminationRule}) = any(map(r -> r.predicate(st), tset))
-
-"""
-    run_game(g::Game, state::GameState)
-
-Initializes the game state and evolves it.
-"""
-function run_game(g::Game, state::GameState)
-    imap = compile_interaction_set(g)
-    tset = termination_set(g)
-    while !isfinished(state, tset)
-        queue = action_step(state)
-        state = update_step(g, state, imap)
-    end
-    return state
-end
-
-function action_step(state::GameState)
-    queues = OrderedDict{Int64, PriorityQueue}()
-    scene = state.scene
-    # action phase
-    for i = scene.dynamic.keys
-        el = scene.dynamic[i]
-        rule = evolve(el, state)
-        q = PriorityQueue{Rule, Int64}()
-        sync!(q, promise(rule)(i, 0))
-        queues[i] = q
-    end
-    return queues
-end
-
-function update_step(state::GameState, imap::InteractionMap)
-    queues = action_step(state)
-    update_step(state, imap, queues)
-end
-"""
-    update_step(state::GameState, imap::InteractionMap)::GameState
-
-Produces the next game state.
-"""
-function update_step(state::GameState, imap::InteractionMap,
-                     queues::OrderedDict{Int64, PriorityQueue})
-
-    scene = state.scene
-    ks = scene.dynamic.keys
-    # static interaction phase
-    new_pos = lookahead(scene.dynamic, queues)
-    for (i, el_id) = enumerate(ks)
-        el = scene.dynamic[el_id]
-        pot_pos = x, y = new_pos[i]
-        tile = scene.static[x, y]
-        key = typeof(el) => typeof(tile)
-        haskey(imap, key) || continue
-        rule = imap[key](el_id, pot_pos)
-        sync!(queues[el_id], rule)
-    end
-    # dynamic interaction phase
-    kdtree = KDTree(new_pos, cityblock)
-    for (i, el_id) = enumerate(ks)
-        el = scene.dynamic[el_id]
-        T_el = typeof(el)
-        # Check the el's position on the gridscene
-        cs = collisions(kdtree, i, 1, scene.kdtree.data)
-        # Update
-        for ci in cs
-            cindex = ks[ci]
-            collider = scene.dynamic[cindex]
-            key = T_el => typeof(collider)
-            haskey(imap, key) || continue
-            rule = imap[key](el_id, cindex)
-            sync!(queues[el_id], rule)
-        end
-    end
-    state = resolve(queues, state)
-end
-
-
-#################################################################################
 # Helpers
 #################################################################################
 
-function lookahead(agents::OrderedDict{Int64, Agent})
-    map(v -> v.position, values(agents))
+function lookahead(els::OrderedDict{Int64, DynamicElement})
+    map(v -> v.position, values(els))
 end
 
-function lookahead(agents::OrderedDict{Int64,Agent},
+function lookahead(els::OrderedDict{Int64,DynamicElement},
                    queues::OrderedDict{Int64, <:PriorityQueue})
-    positions = lookahead(agents)
-    ks = collect(keys(agents))
-    for i in eachindex(ks)
-        agent = agents[ks[i]]
-        queue = queues[ks[i]]
-        # queue_array = collect(queue)
+    positions = lookahead(els)
+    for (i, k) = enumerate(els.keys)
+        el = els[k]
+        queue = queues[k]
         for (r, p) in queue
             if typeof(r) <: Move
                 positions[i] = transform(r)(positions[i])
@@ -290,7 +293,6 @@ end
 function new_index(st::GameState)
     new_index(st.scene)
 end
-
 function new_index(s::GridScene)
     keys = s.dynamic.keys
     key = length(keys) == 0 ? 0 : last(keys)

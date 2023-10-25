@@ -147,7 +147,7 @@ function render end
 include("utils/utils.jl")
 include("rules.jl")
 include("elements.jl")
-include("scene.jl")
 include("engine.jl")
+include("graphics.jl")
 include("games/games.jl")
 end

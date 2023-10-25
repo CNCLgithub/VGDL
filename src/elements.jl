@@ -1,15 +1,20 @@
-export position,
+export  evolve,
+    position,
     policy,
     observe,
     plan,
     actionspace,
+    actionspace,
     Observation,
     NoObservation,
+    no_obs,
     no_obs,
     Policy,
     RandomPolicy,
     random_policy,
+    random_policy,
     GreedyPolicy,
+    greedy_policy
     greedy_policy
 
 
@@ -17,16 +22,11 @@ export position,
 # Static Elements
 #################################################################################
 
-struct Ground <: StaticElement end
-const ground = Ground()
-
-struct Obstacle <: StaticElement end
-const obstacle = Obstacle()
-
 #################################################################################
-# Agents
+# Dynamic Elements
 #################################################################################
 
+function evolve end
 
 """
     position(::DynamicElement)::SVector{2, Int64}
@@ -34,6 +34,15 @@ const obstacle = Obstacle()
 position of an element
 """
 function position end
+
+#################################################################################
+# Agents
+#################################################################################
+
+function evolve(el::Agent, state::GameState)
+    obs = observe(el, state)
+    action = plan(el, obs)
+end
 
 """
     policy(::Agent)::Policy
@@ -58,8 +67,8 @@ actionspace(::Agent) = _default_actionspace
 
 abstract type Observation end
 
-struct PosObs <: Observation
-    data::SVector{2, Int32}
+struct DirectObs <: Observation
+    state::GameState
 end
 
 struct NoObservation <: Observation end
@@ -72,8 +81,8 @@ const no_obs = NoObservation()
 abstract type Policy end
 
 "Sugar to extract agent's policy and use it for planning"
-function plan(g::Game, agent::Agent, agent_index::Int, obs::Observation)
-    plan(g, policy(agent), agent, agent_index, obs)
+function plan(agent::Agent, obs::Observation)
+    plan(agent, obs, policy(agent))
 end
 
 
@@ -83,21 +92,14 @@ Why think when you can act.
 struct GreedyPolicy <: Policy end
 const greedy_policy = GreedyPolicy()
 
-function plan(::Game, ::GreedyPolicy, agent::Agent, agent_index::Int, ::NoObservation)
-    @show action = rand(actionspace(agent))
-    promise(action)(agent_index, 0)# REVIEW: the second argument is not used
-end
-
-
 """
 Just close your eyes, everything will be fine
 """
 struct RandomPolicy <: Policy end
 const random_policy = RandomPolicy()
 
-function plan(::Game, ::RandomPolicy, agent::Agent, agent_index::Int, ::Observation)
+function plan(agent::Agent, ::Observation, ::RandomPolicy)
     action = rand(actionspace(agent))
-    promise(action)(agent_index, 0)# REVIEW: the second argument is not used
 end
 
 
@@ -105,18 +107,13 @@ end
 # Agent implementations
 #################################################################################
 
-@with_kw mutable struct Player <: Agent
-    position::SVector{2, Int64}
-    policy::Policy = greedy_policy
-end
-position(agent::Player) = agent.position
-policy(agent::Player) = agent.policy
-
-"Default, no observation"
-observe(::Game, ::Agent, index::Int64, ::GameState, ::KDTree) = no_obs
+"Default, DirectObs"
+observe(::Agent, gs::GameState)  =
+    DirectObs(gs)
 
 "Default, random policy"
 policy(::Agent) = random_policy
+
 
 #################################################################################
 # helpers
