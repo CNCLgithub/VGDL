@@ -4,6 +4,8 @@ export InteractionMap,
     run_game,
     isfinished,
     action_step,
+    isfinished,
+    action_step,
     update_step,
     sync!,
     modify!,
@@ -28,8 +30,8 @@ rule instantiations.
 
 The result is used in `update_step` and `resolve`.
 """
-function compile_interaction_set(g::Game)
-    iset = interaction_set(g)
+function compile_interaction_set(::Type{G}) where {G<:Game}
+    iset = interaction_set(G)
     # a temporary mapping of type pairs ->
     # a vector of functions that will be composed
     vmap = Dict{IPair, Vector{Type{<:Rule}}}()
@@ -54,150 +56,23 @@ function compile_interaction_set(g::Game)
     return imap
 end
 
-
-#################################################################################
-# Resolving interactions
-#################################################################################
-
-"Default priority"
-priority(::Rule) = 10
-
-"Default modification to queue does nothing"
-function modify!(queue::PriorityQueue, rule::Rule)
-    return nothing
-end
-
-"Adds a rule to the queue with `priority`"
-function add!(queue::PriorityQueue, rule::Rule)
-    enqueue!(queue, rule, priority(rule))
-    return nothing
-end
-
-"""
-
-Integrate `rule` into `queue`.
-See `modify!` and `add!`.
-"""
-function sync!(queue::PriorityQueue, rule::Rule)
-    modify!(queue, rule)
-    add!(queue, rule)
-    return nothing
-end
-
-
-# REVIEW: Might want to allow for game specific implementations
-"""
-    resolve(queues, state)
-
-Integrates all agent based queues into change, birth, and death queues,
-then resolves the next game state.
-"""
-function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
-                 st::GameState)
-    # change death and birth queue
-    cq = Dict{Any, Function}()
-    bq = Dict{Any, Function}()
-    dq = Dict{Any, Function}()
-
-    scene = st.scene
-    # move rules from agent queues to c,b,d queues
-    for i = scene.dynamic.keys
-        for (r, _) = queues[i]
-            pushtoqueue!(r, cq, bq, dq)
-        end
-    end
-
-    new_state = deepcopy(st)
-
-    # changes first
-    for (l, f) in cq
-        mut_lens = Lens!(l)
-        val = f(l(st))
-        set(new_state, mut_lens, val)
-    end
-
-    # births next
-    for (l, f) in bq
-        val = f(l(st))
-        mut_lens = new_index(new_state)
-        Accessors.insert(new_state, mut_lens, val)
-    end
-
-    # deaths last
-    for (l, f) in dq
-        mut_lens = Lens!(l)
-        delete(new_state, mut_lens)
-    end
-
-    new_state.time = st.time + 1
-    new_scene = new_state.scene
-    new_scene.kdtree = KDTree(lookahead(new_scene.dynamic), cityblock)
-    return new_state
-end
-
-
-"""
-    selectqueue(::Rule, c, b, d)
-
-Determines which queue a rule applies to (change, birth, death).
-"""
-function selectqueue end
-selectqueue(::Rule{ChangeEffect, <:Application}, c, b, d) = c
-selectqueue(::Rule{BirthEffect, <:Application}, c, b, d) = b
-selectqueue(::Rule{DeathEffect, <:Application}, c, b, d) = d
-
-
-"""
-    pushtoqueue!(r::Rule, c,b,d)
-
-Adds `r` to the proper change, birth, or death queue.
-"""
-function pushtoqueue! end
-
-
-"Has no effect..."
-function pushtoqueue!(::Rule{<:NoEffect, <:Application},
-                      ::AbstractDict, ::AbstractDict, ::AbstractDict)
-    return true
-end
-
-
-"Add `r` as long as its lens is not already present"
-function pushtoqueue!(r::Rule{<:Effect, Single},
-                      c::AbstractDict, b::AbstractDict, d::AbstractDict)
-    q = selectqueue(r, c, b, d)
-    lr = lens(r)
-    haskey(q, lr) && return false
-    tr = transform(r)
-    q[lr] = tr
-    return true
-end
-
-function pushtoqueue!(r::Rule{<:Effect, Many},
-                      c::AbstractDict, b::AbstractDict, d::AbstractDict)
-    q = selectqueue(r, c, b, d)
-    lr = lens(r)
-    tr = transform(r)
-    q[lr] = haskey(q, lr) ? opcompose(q[lr], tr) : tr
-    return true
-end
-
 #################################################################################
 # Evolving game state (rule application)
 #################################################################################
-isfinished(st::GameState, tset::Array{TerminationRule}) = any(map(r -> r.predicate(st), tset))
+isfinished(st::GameState, tset::Array{TerminationRule}) =
+    any(r -> r.predicate(st), tset)
 
 """
-    run_game(g::Game, state::GameState)
+    run_game(g::Game, scene::GridScene)
 
 Initializes the game state and evolves it.
 """
-function run_game(g::Game, state::GameState)
-    imap = compile_interaction_set(g)
-    tset = termination_set(g)
+function run_game(::Type{G}, state::GameState) where {G <: Game}
+    imap = compile_interaction_set(G)
+    tset = termination_set(G)
     while !isfinished(state, tset)
         queue = action_step(state)
-        state = update_step(g, state, imap)
+        state  = update_step(state, imap)
     end
     return state
 end
@@ -262,22 +137,155 @@ function update_step(state::GameState, imap::InteractionMap,
 end
 
 
+
+
+#################################################################################
+# Resolving interactions
+#################################################################################
+
+"Default priority"
+priority(::Rule) = 10
+
+"Default modification to queue does nothing"
+function modify!(queue::PriorityQueue, rule::Rule)
+    return nothing
+end
+
+"Adds a rule to the queue with `priority`"
+function add!(queue::PriorityQueue, rule::Rule)
+    enqueue!(queue, rule, priority(rule))
+    return nothing
+end
+
+"""
+
+Integrate `rule` into `queue`.
+See `modify!` and `add!`.
+"""
+function sync!(queue::PriorityQueue, rule::Rule)
+    modify!(queue, rule)
+    add!(queue, rule)
+    return nothing
+end
+
+
+# REVIEW: Might want to allow for game specific implementations
+"""
+    resolve(queues, state)
+
+Integrates all agent based queues into change, birth, and death queues,
+then resolves the next game state.
+"""
+function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
+                 st::GameState)
+
+    # change death and birth queue
+    cq = Dict{Any, Function}()
+    bq = Dict{Any, Function}()
+    dq = Dict{Any, Function}()
+
+    scene = st.scene
+    scene = st.scene
+    # move rules from agent queues to c,b,d queues
+    for i = scene.dynamic.keys
+        for (r, _) = queues[i]
+    for i = scene.dynamic.keys
+        for (r, _) = queues[i]
+            pushtoqueue!(r, cq, bq, dq)
+        end
+    end
+
+    new_state = deepcopy(st)
+
+    # changes first
+    for (l, f) in cq
+        mut_lens = Lens!(l)
+        val = f(l(st))
+        set(new_state, mut_lens, val)
+    end
+
+    # births next
+    for (l, f) in bq
+        val = f(l(st))
+        mut_lens = new_index(new_state)
+        Accessors.insert(new_state, mut_lens, val)
+    end
+
+    # deaths last
+    for (l, f) in dq
+        mut_lens = Lens!(l)
+        delete(new_state, mut_lens)
+    end
+
+    new_state.time = st.time + 1
+    new_scene = new_state.scene
+    new_scene.kdtree = KDTree(lookahead(new_scene.dynamic), cityblock)
+    new_scene = new_state.scene
+    new_scene.kdtree = KDTree(lookahead(new_scene.dynamic), cityblock)
+    return new_state
+end
+
+
+"""
+    selectqueue(::Rule, c, b, d)
+
+Determines which queue a rule applies to (change, birth, death).
+"""
+function selectqueue end
+selectqueue(::Rule{ChangeEffect, <:Application}, c, b, d) = c
+selectqueue(::Rule{BirthEffect, <:Application}, c, b, d) = b
+selectqueue(::Rule{DeathEffect, <:Application}, c, b, d) = d
+
+
+"""
+    pushtoqueue!(r::Rule, c,b,d)
+
+Adds `r` to the proper change, birth, or death queue.
+"""
+function pushtoqueue! end
+
+
+"Has no effect..."
+function pushtoqueue!(::Rule{<:NoEffect, <:Application},
+                      ::AbstractDict, ::AbstractDict, ::AbstractDict)
+    return true
+end
+
+
+"Add `r` as long as its lens is not already present"
+function pushtoqueue!(r::Rule{<:Effect, Single},
+                      c::AbstractDict, b::AbstractDict, d::AbstractDict)
+    q = selectqueue(r, c, b, d)
+    lr = lens(r)
+    haskey(q, lr) && return false
+    tr = transform(r)
+    q[lr] = tr
+    return true
+end
+
+function pushtoqueue!(r::Rule{<:Effect, Many},
+                      c::AbstractDict, b::AbstractDict, d::AbstractDict)
+    q = selectqueue(r, c, b, d)
+    lr = lens(r)
+    tr = transform(r)
+    q[lr] = haskey(q, lr) ? opcompose(q[lr], tr) : tr
+    return true
+end
+
 #################################################################################
 # Helpers
 #################################################################################
 
-function lookahead(agents::OrderedDict{Int64, Agent})
-    map(v -> v.position, values(agents))
+function lookahead(els::OrderedDict{Int64, DynamicElement})
+    map(v -> v.position, values(els))
 end
 
-function lookahead(agents::OrderedDict{Int64,Agent},
+function lookahead(els::OrderedDict{Int64,DynamicElement},
                    queues::OrderedDict{Int64, <:PriorityQueue})
-    positions = lookahead(agents)
-    ks = collect(keys(agents))
-    for i in eachindex(ks)
-        agent = agents[ks[i]]
-        queue = queues[ks[i]]
-        # queue_array = collect(queue)
+    positions = lookahead(els)
+    for (i, k) = enumerate(els.keys)
+        el = els[k]
+        queue = queues[k]
         for (r, p) in queue
             if typeof(r) <: Move
                 positions[i] = transform(r)(positions[i])
@@ -290,7 +298,6 @@ end
 function new_index(st::GameState)
     new_index(st.scene)
 end
-
 function new_index(s::GridScene)
     keys = s.dynamic.keys
     key = length(keys) == 0 ? 0 : last(keys)
