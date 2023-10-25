@@ -4,17 +4,13 @@ export  evolve,
     observe,
     plan,
     actionspace,
-    actionspace,
     Observation,
     NoObservation,
-    no_obs,
     no_obs,
     Policy,
     RandomPolicy,
     random_policy,
-    random_policy,
     GreedyPolicy,
-    greedy_policy
     greedy_policy
 
 
