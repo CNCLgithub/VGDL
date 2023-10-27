@@ -78,7 +78,7 @@ abstract type Policy end
 
 "Sugar to extract agent's policy and use it for planning"
 function plan(agent::Agent, obs::Observation)
-    plan(agent, obs, policy(agent))
+        plan(agent, obs, policy(agent))
 end
 
 
@@ -87,6 +87,7 @@ Why think when you can act.
 """
 struct GreedyPolicy <: Policy end
 const greedy_policy = GreedyPolicy()
+
 
 """
 Just close your eyes, everything will be fine
@@ -97,7 +98,6 @@ const random_policy = RandomPolicy()
 function plan(agent::Agent, ::Observation, ::RandomPolicy)
     action = rand(actionspace(agent))
 end
-
 
 #################################################################################
 # Agent implementations

@@ -1,7 +1,7 @@
 using Distances
 using LinearAlgebra
 
-import Base.typemin, Base.typemax, Base.length, Base.:-
+import Base.convert, Base.typemin, Base.typemax, Base.length, Base.:-
 export Line, typemin, collisions
 
 

@@ -185,6 +185,7 @@ function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
     dq = Dict{Any, Function}()
 
     scene = st.scene
+    scene = st.scene
     # move rules from agent queues to c,b,d queues
     for i = scene.dynamic.keys
         for (r, _) = queues[i]
@@ -215,6 +216,8 @@ function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
     end
 
     new_state.time = st.time + 1
+    new_scene = new_state.scene
+    new_scene.kdtree = KDTree(lookahead(new_scene.dynamic), cityblock)
     new_scene = new_state.scene
     new_scene.kdtree = KDTree(lookahead(new_scene.dynamic), cityblock)
     return new_state
@@ -293,6 +296,7 @@ end
 function new_index(st::GameState)
     new_index(st.scene)
 end
+
 function new_index(s::GridScene)
     keys = s.dynamic.keys
     key = length(keys) == 0 ? 0 : last(keys)

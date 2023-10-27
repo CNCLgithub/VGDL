@@ -1,66 +1,12 @@
-using Test
+using Colors
+using ImageCore
 using StaticArrays
-using VGDL
-using VideoIO
+using ImageIO
+using FileIO
 
 
-const zelda0 = "wwwwwwwwwwwww
-wA.......w..w
-w..w........w
-w...w...w.+ww
-www+w2..wwwww
-w.......w.g.w
-w.2.........w
-w+....2.....w
-wwwwwwwwwwwww"
-
-const zelda1 = "wwwwwwwwwwwww
-w.3.gw..+.1.w
-w..www.....+w
-w..........2w
-w.......wwwww
-w.......w+..w
-w...w...w...w
-wA..w.......w
-wwwwwwwwwwwww"
-
-const zelda2 = "wwwwwwwwwwwww
-w..1.ww....Aw
-w...+w......w
-w.w.....wwwww
-w+w.....+..1w
-w.w..wwwwwwww
-w.......w...w
-w...1w....wgw
-wwwwwwwwwwwww"
-
-const zelda3 = "wwwwwwwwwwwww
-w..........gw
-w....w......w
-w.w.w+.1....w
-w+w.........w
-ww1..1..1...w
-w..w..w.w.w.w
-w...A......+w
-wwwwwwwwwwwww"
-
-const zelda4 = "wwwwwwwwwwwww
-w+...w....g.w
-w...www.....w
-w.1..www....w
-w..wwwwwww..w
-w......w+...w
-w....w...1..w
-wA...w+...1.w
-wwwwwwwwwwwww"
-
-
-function test_one()
-    g = Zelda()
-    scene = random_scene(g, (30, 30), 0.25, 40)
-    state = GameState(scene)
-    render_image(g, state)
-end
+test_one(Zelda);
+test_graphics(Zelda);
 
 function test_two()
     g = ButterflyGame()
@@ -119,5 +65,5 @@ end
 
 #test_one()
 #test_two()
-collision_test(zelda0)
+#collision_test(zelda0)
 #run_game_test()

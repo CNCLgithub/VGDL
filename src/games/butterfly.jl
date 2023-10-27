@@ -6,7 +6,9 @@ export ButterflyGame,
     Ground,
     ground,
     Player,
-    Butterfly
+    Butterfly,
+    _butterflygame_colormap,
+    default_colormap
 
 "A game with butterflies =)"
 struct ButterflyGame <: Game end
@@ -42,7 +44,6 @@ policy(agent::Butterfly) = agent.policy
     position::SVector{2, Int64}
     policy::Policy = greedy_policy
 end
-
 position(agent::Player) = agent.position
 policy(agent::Player) = agent.policy
 
@@ -114,7 +115,7 @@ const _butterflygame_colormap =
         Ground => F3V(0.8, 0.8, 0.8),
         Obstacle => F3V(0., 0., 0.),
         Pinecone => F3V(0., 0.8, 0.0),
-        Butterfly => F3V(0.9, 0.7, 0.2),
+        Butterfly => F3V(1, 0.6, 0.5),
         Player => F3V(0., 0., 0.9),
     )
 default_colormap(::Type{ButterflyGame}) = _butterflygame_colormap
@@ -194,7 +195,7 @@ const _bg_levels = [
 
 levels(::Type{ButterflyGame}) = _bg_levels
 
-function load_level(::Type{T}, lvl::Int) where {T <: ButterflyGame}
+function load_level(::Type{T}, lvl::Int) where {T <: ButterflyGame} #REVIEW: could be generic?
     load_level(T, levels(T)[lvl])
 end
 
@@ -243,7 +244,6 @@ function load_level(::Type{T}, lvl::String) where {T<:ButterflyGame}
     end
 
     state.scene.kdtree = KDTree(lookahead(state.scene.dynamic), cityblock)
-
 
     return state
 end
