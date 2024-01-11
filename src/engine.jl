@@ -184,10 +184,8 @@ function resolve(queues::OrderedDict{Int64, <:PriorityQueue},
 
     scene = st.scene
     # move rules from agent queues to c,b,d queues
-    for i = scene.dynamic.keys
-        for (r, _) = queues[i]
-            pushtoqueue!(r, cq, bq, dq)
-        end
+    for (_, q) = queues, (r, _) = q
+        pushtoqueue!(r, cq, bq, dq)
     end
 
     new_state = deepcopy(st)
