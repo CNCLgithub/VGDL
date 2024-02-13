@@ -99,7 +99,7 @@ promise(::Type{KilledBy}) = KilledBy
 priority(::KilledBy) = 0
 
 # used in `sync!`
-function modify!(queue::PriorityQueue, rule::KilledBy)
+function modify!(queue::PriorityQueue, rule::T) where {T<:Rule{DeathEffect}}
     empty!(queue)
     return nothing
 end
