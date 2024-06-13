@@ -23,6 +23,7 @@ using AccessorsExtra
 using DataStructures 
 using NearestNeighbors
 using DocStringExtensions
+using Distances: cityblock
 
 export Game,
     GameState,

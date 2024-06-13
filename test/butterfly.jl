@@ -4,6 +4,7 @@ using ImageInTerminal
 using StaticArrays
 using ImageIO
 using FileIO
+using VGDL
 
 function test_one()
     st = load_level(ButterflyGame, 1)
