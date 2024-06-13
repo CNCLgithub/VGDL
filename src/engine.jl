@@ -108,6 +108,14 @@ function update_step(state::GameState, imap::InteractionMap,
     for (i, el_id) = enumerate(ks)
         el = scene.dynamic[el_id]
         pot_pos = x, y = new_pos[i]
+        # HACK: this is so gross
+        if !checkbounds(Bool, scene.static, x, y)
+            pos_pos = x, y = el.position
+            # @show el_id
+            # @show typeof(el)
+            # @show el.position
+            # @show pot_pos
+        end
         tile = scene.static[x, y]
         key = typeof(el) => typeof(tile)
         haskey(imap, key) || continue

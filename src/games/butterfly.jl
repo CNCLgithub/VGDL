@@ -94,13 +94,13 @@ end
 function termination_set(::Type{ButterflyGame})
     set = [
         TerminationRule(
-            st -> isempty(findall(st.scene.static .== pinecone)),
+            st -> count(==(pinecone), st.scene.static) == 0,
             GameOver()), # no pinecones
         TerminationRule(
             st -> st.time >= st.max_time,
             GameOver()), # Time out
         TerminationRule(
-            st -> isempty(findall(x -> isa(x, Butterfly), st.scene.dynamic)),
+            st -> count(x -> isa(x, Butterfly), st.scene.dynamic) == 0,
             GameWon()) # victory!
     ]
 end

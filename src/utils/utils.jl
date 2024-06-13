@@ -23,9 +23,10 @@ function collisions(tree::NNTree, index::Int64, radius::Int64,
     colliders = Int64[] # Channel{Int64}(n)
     for ci = idxs
         ci == index && continue
-        if (new_pos[ci] == cur_tgt_loc)  ||
-            (new_pos[ci] == pre_tgt_loc) ||
-            (prev_pos[ci] == cur_tgt_loc)
+        if (new_pos[ci] == cur_tgt_loc)   ||
+            (new_pos[ci] == pre_tgt_loc)  ||
+            (prev_pos[ci] == cur_tgt_loc) ||
+            (prev_pos[ci] == pre_tgt_loc)
 
             push!(colliders, ci)
         end
