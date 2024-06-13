@@ -100,7 +100,7 @@ function termination_set(::Type{ButterflyGame})
             st -> st.time >= st.max_time,
             GameOver()), # Time out
         TerminationRule(
-            st -> count(x -> isa(x, Butterfly), st.scene.dynamic) == 0,
+            st -> count(x -> isa(x, Butterfly), values(st.scene.dynamic)) == 0,
             GameWon()) # victory!
     ]
 end

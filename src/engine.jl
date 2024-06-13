@@ -93,8 +93,9 @@ function update_step(state::GameState, imap::InteractionMap)
     queues = action_step(state)
     update_step(state, imap, queues)
 end
+
 """
-    update_step(state::GameState, imap::InteractionMap)::GameState
+$(TYPEDSIGNATURES)
 
 Produces the next game state.
 """
@@ -104,17 +105,17 @@ function update_step(state::GameState, imap::InteractionMap,
     scene = state.scene
     ks = scene.dynamic.keys
     # static interaction phase
+
+    # tentatively advance dynamic elements
     new_pos = lookahead(scene.dynamic, queues)
     for (i, el_id) = enumerate(ks)
         el = scene.dynamic[el_id]
         pot_pos = x, y = new_pos[i]
-        # HACK: this is so gross
+        # HACK: this shouldn't be needed
+        # sometimes objects go out of bounds?
         if !checkbounds(Bool, scene.static, x, y)
-            pos_pos = x, y = el.position
-            # @show el_id
-            # @show typeof(el)
-            # @show el.position
-            # @show pot_pos
+            # reset to previous position
+            new_pos[i] = pos_pos = x, y = el.position
         end
         tile = scene.static[x, y]
         key = typeof(el) => typeof(tile)
@@ -124,13 +125,15 @@ function update_step(state::GameState, imap::InteractionMap,
     end
     # dynamic interaction phase
     kdtree = KDTree(new_pos, cityblock)
+    colvec = fill(false, length(ks))
     for (i, el_id) = enumerate(ks)
         el = scene.dynamic[el_id]
         T_el = typeof(el)
         # Check the el's position on the gridscene
-        cs = collisions(kdtree, i, 1, scene.kdtree.data)
+        collisions!(colvec, kdtree, i, 1, scene.kdtree.data)
         # Update
-        for ci in cs
+        for (ci, c) = enumerate(colvec)
+            c || continue
             cindex = ks[ci]
             collider = scene.dynamic[cindex]
             key = T_el => typeof(collider)
