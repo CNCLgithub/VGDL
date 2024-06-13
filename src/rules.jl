@@ -37,6 +37,9 @@ struct Right <: Move
     lens
     Right(ref) = new(_move_lens(ref))
 end
+"""
+$(TYPEDSIGNATURES)
+"""
 lens(r::Move) = r.lens
 priority(::Move) = 1
 transform(::Up) = x -> x + up

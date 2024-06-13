@@ -1,15 +1,17 @@
-using Distances
+using Distances: cityblock
 using NearestNeighbors
 using VGDL
+using StaticArrays
 
 function test()
-    a = Line(undef, 2)
-    a[1], a[2] = [2,1], [2,3]
-    b = Line(undef, 2)
-    b[1], b[2] = [1,2], [3,2]
-    @show data = [a,b]
-    @show tree = KDTree(data)
-    idxs = collisions(tree, 1, 10)
+    a1 = SVector{2, Int64}(0, 0)
+    a2 = SVector{2, Int64}(1, 0)
+    b1 = SVector{2, Int64}(1, 0)
+    b2 = SVector{2, Int64}(0, 0)
+    data = [a2,b2]
+    prev = [a1,b1]
+    @show tree = KDTree(data, cityblock)
+    @show collisions(tree, 1, 3, prev)
 end
 
 test()
